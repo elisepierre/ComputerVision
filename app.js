@@ -100,22 +100,19 @@ function drawHand(landmarks) {
 }
 
 function handleSuccess() {
+    console.log("Success! Gesture matched."); // Vérifie ta console (F12)
     score++;
-    scoreEl.innerText = score;
+    document.getElementById("score").innerText = score;
     
     const pop = document.getElementById("feedback-pop");
     pop.style.display = "block";
     
-    // Feedback visuel : flash vert sur la carte
-    document.getElementById("challenge-card").style.borderColor = "#00ff00";
-    
     setTimeout(() => {
         pop.style.display = "none";
-        document.getElementById("challenge-card").style.borderColor = "#00ffcc";
-        
-        // Nouveau mot au hasard
-        const words = ["HELLO", "VICTORY", "THUMBS_UP"];
-        targetWordEl.innerText = words[Math.floor(Math.random() * words.length)];
+        // Choix du prochain mot
+        const words = ["VICTORY", "THUMBS_UP", "HELLO"];
+        const next = words[Math.floor(Math.random() * words.length)];
+        document.getElementById("target-word").innerText = next;
     }, 1000);
 }
 
