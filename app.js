@@ -12,13 +12,27 @@ let GE; // Gesture Estimator
 
 // 1. Initialisation de la Database de Gestes
 const initGestures = () => {
-    // On crée l'estimateur avec les gestes par défaut (Victory, Thumbs Up)
-    // + On ajoute tes futurs gestes personnalisés ici
+    // 1. Créer l'estimateur avec les gestes par défaut (Victory, Thumbs Up)
     GE = new fp.GestureEstimator([
         fp.Gestures.VictoryGesture,
         fp.Gestures.ThumbsUpGesture,
-        // On ajoutera "HELLO", "THANKS", etc. ici
     ]);
+
+    // 2. Définir le signe HELLO
+    const helloGesture = new fp.GestureDescription('HELLO');
+    
+    // Tous les doigts tendus (No Curl)
+    for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
+        helloGesture.addCurl(finger, fp.FingerCurl.NoCurl, 1.0); 
+        // Optionnel : On précise que les doigts pointent vers le haut
+        helloGesture.addDirection(finger, fp.FingerDirection.VerticalUp, 0.8);
+    }
+    helloGesture.addCurl(fp.Finger.Thumb, fp.FingerCurl.NoCurl, 1.0);
+
+    // 3. Ajouter HELLO à l'estimateur
+    GE.addGesture(helloGesture);
+
+    console.log("✅ Gestures initialized: HELLO, VICTORY, THUMBS_UP");
 };
 
 async function setup() {
