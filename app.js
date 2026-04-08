@@ -48,8 +48,6 @@ async function setup() {
 }
 setup();
 
-// 2. Boucle de Prédiction
-// 1. Modifie la boucle de dessin dans predictWebcam
 async function predictWebcam() {
     canvasElement.width = video.videoWidth;
     canvasElement.height = video.videoHeight;
@@ -58,15 +56,16 @@ async function predictWebcam() {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     
-    // ON NE FAIT PLUS LE SCALE ICI POUR ÉVITER LES ERREURS
-    // Le miroir est déjà géré par le CSS sur le Canvas.
+    // IMPORTANT : On ne fait AUCUN scale ou translate ici.
+    // Le CSS s'en occupe déjà.
 
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
         
-        // --- LOGIQUE FINGERPOSE (On inverse le X ici pour l'IA) ---
+        // --- LOGIQUE FINGERPOSE ---
+        // Fingerpose a besoin des points réels (non miroités)
         const pixelLandmarks = landmarks.map(l => [
-            (1 - l.x) * canvasElement.width, 
+            l.x * canvasElement.width, 
             l.y * canvasElement.height, 
             l.z
         ]);
@@ -76,25 +75,22 @@ async function predictWebcam() {
         if (estimatedGestures.gestures.length > 0) {
             const bestGesture = estimatedGestures.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
             
-            // Comparaison avec le mot affiché
             if (bestGesture.name.toUpperCase() === targetWordEl.innerText) {
                 handleSuccess();
             }
         }
         
-        // --- DESSIN DES POINTS ---
         drawHand(landmarks);
     }
     canvasCtx.restore();
     window.requestAnimationFrame(predictWebcam);
 }
 
-// 2. Modifie la fonction de dessin (Coordonnées directes)
 function drawHand(landmarks) {
     for (let point of landmarks) {
         canvasCtx.fillStyle = "#00ffcc";
         canvasCtx.beginPath();
-        // On utilise les coordonnées brutes car le CSS scaleX(-1) inverse déjà le canvas
+        // Coordonnées brutes : MediaPipe (0-1) * Taille Canvas
         const x = point.x * canvasElement.width;
         const y = point.y * canvasElement.height;
         
@@ -102,6 +98,7 @@ function drawHand(landmarks) {
         canvasCtx.fill();
     }
 }
+
 function handleSuccess() {
     score++;
     scoreEl.innerText = score;
@@ -120,22 +117,6 @@ function handleSuccess() {
         const words = ["HELLO", "VICTORY", "THUMBS_UP"];
         targetWordEl.innerText = words[Math.floor(Math.random() * words.length)];
     }, 1000);
-}
-
-// Dessin simplifié
-function drawHand(landmarks) {
-    for (let point of landmarks) {
-        canvasCtx.fillStyle = "#00ffcc";
-        canvasCtx.beginPath();
-        
-        // Comme on a fait canvasCtx.scale(-1, 1) avant d'appeler cette fonction,
-        // on dessine les points normalement, le canvas s'occupe de l'inversion.
-        const x = point.x * canvasElement.width;
-        const y = point.y * canvasElement.height;
-        
-        canvasCtx.arc(x, y, 4, 0, 2 * Math.PI);
-        canvasCtx.fill();
-    }
 }
 
 // Bouton Start
