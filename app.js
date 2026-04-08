@@ -6,17 +6,22 @@ const canvasCtx = canvasElement.getContext("2d");
 const targetWordEl = document.getElementById("target-word");
 const scoreEl = document.getElementById("score");
 
-let handLandmarker = undefined;
+let handLandmarker;
 let score = 0;
-let buffer = [];
-const SEQ_LENGTH = 30;
+let GE; // Gesture Estimator
 
-// --- DATABASE DE 15 SIGNES (LOGIQUE SIMPLIFIÉE) ---
-const ASL_DICTIONARY = ["HELLO", "THANKS", "SORRY", "PLEASE", "DRINK", "EAT", "YES", "NO", "HELP", "MORE", "WASH", "BOOK", "PLAY", "STOP", "LOVE"];
-let currentTarget = ASL_DICTIONARY[0];
+// 1. Initialisation de la Database de Gestes
+const initGestures = () => {
+    // On crée l'estimateur avec les gestes par défaut (Victory, Thumbs Up)
+    // + On ajoute tes futurs gestes personnalisés ici
+    GE = new fp.GestureEstimator([
+        fp.Gestures.VictoryGesture,
+        fp.Gestures.ThumbsUpGesture,
+        // On ajoutera "HELLO", "THANKS", etc. ici
+    ]);
+};
 
-// 1. Initialisation MediaPipe
-async function init() {
+async function setup() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
         baseOptions: { 
@@ -25,61 +30,56 @@ async function init() {
         },
         runningMode: "VIDEO", numHands: 1
     });
+    initGestures();
 }
-init();
+setup();
 
-// 2. Lancement Caméra
-document.getElementById("enableWebcamButton").addEventListener("click", async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    video.addEventListener("loadeddata", predictWebcam);
-    document.getElementById("enableWebcamButton").style.display = "none";
-});
-
+// 2. Boucle de Prédiction
 async function predictWebcam() {
     canvasElement.width = video.videoWidth;
     canvasElement.height = video.videoHeight;
-
     const results = await handLandmarker.detectForVideo(video, performance.now());
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     
-    // Miroir pour le dessin des points
+    // Effet Miroir
     canvasCtx.translate(canvasElement.width, 0);
     canvasCtx.scale(-1, 1);
 
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
-        drawConnectors(landmarks); // Fonction de dessin
+        
+        // --- RECONNAISSANCE VIA FINGERPOSE ---
+        // On convertit les landmarks MediaPipe au format Fingerpose
+        const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
+        const estimatedGestures = await GE.estimate(pixelLandmarks, 8.5); // 8.5 = Seuil de confiance
 
-        // --- LOGIQUE DE RECONNAISSANCE ---
-        // On extrait le mouvement (y du bout de l'index)
-        const indexTipY = landmarks[8].y;
-        const wristY = landmarks[0].y;
-
-        // Exemple simplifié : Si l'index monte au dessus du poignet pour HELLO
-        if (currentTarget === "HELLO" && indexTipY < wristY - 0.2) {
-            validateSign();
+        if (estimatedGestures.gestures.length > 0) {
+            // On prend le geste avec le plus haut score de confiance
+            const bestGesture = estimatedGestures.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
+            
+            // Si le geste correspond au mot affiché (Challenge)
+            if (bestGesture.name.toUpperCase() === targetWordEl.innerText) {
+                handleSuccess();
+            }
         }
+        drawHand(landmarks);
     }
     canvasCtx.restore();
     window.requestAnimationFrame(predictWebcam);
 }
 
-function validateSign() {
+function handleSuccess() {
     score++;
     scoreEl.innerText = score;
-    // Animation Flash
-    document.body.style.backgroundColor = "#004433";
-    setTimeout(() => document.body.style.backgroundColor = "#1e1e2f", 500);
-    
-    // Prochain mot
-    currentTarget = ASL_DICTIONARY[Math.floor(Math.random() * ASL_DICTIONARY.length)];
-    targetWordEl.innerText = currentTarget;
+    // Changement de mot (On alterne entre Victory et Thumbs_Up pour tester)
+    const words = ["VICTORY", "THUMBS_UP"];
+    targetWordEl.innerText = words[Math.floor(Math.random() * words.length)];
 }
 
-function drawConnectors(landmarks) {
+// Dessin simplifié
+function drawHand(landmarks) {
     for (let point of landmarks) {
         canvasCtx.fillStyle = "#00ffcc";
         canvasCtx.beginPath();
@@ -87,3 +87,11 @@ function drawConnectors(landmarks) {
         canvasCtx.fill();
     }
 }
+
+// Bouton Start
+document.getElementById("enableWebcamButton").addEventListener("click", async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    video.onloadeddata = predictWebcam;
+    document.getElementById("enableWebcamButton").style.display = "none";
+});
