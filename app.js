@@ -98,13 +98,12 @@ function drawHand(landmarks) {
         canvasCtx.fillStyle = "#00ffcc";
         canvasCtx.beginPath();
         
-        // CORRECTION MIROIR POUR LES POINTS :
-        // Au lieu de : point.x * canvasElement.width
-        // On fait : (1 - point.x) * canvasElement.width
-        const mirroredX = (1 - point.x) * canvasElement.width;
+        // Comme on a fait canvasCtx.scale(-1, 1) avant d'appeler cette fonction,
+        // on dessine les points normalement, le canvas s'occupe de l'inversion.
+        const x = point.x * canvasElement.width;
         const y = point.y * canvasElement.height;
         
-        canvasCtx.arc(mirroredX, y, 4, 0, 2 * Math.PI);
+        canvasCtx.arc(x, y, 4, 0, 2 * Math.PI);
         canvasCtx.fill();
     }
 }
