@@ -83,7 +83,14 @@ function drawHand(landmarks) {
     for (let point of landmarks) {
         canvasCtx.fillStyle = "#00ffcc";
         canvasCtx.beginPath();
-        canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 4, 0, 2 * Math.PI);
+        
+        // CORRECTION MIROIR POUR LES POINTS :
+        // Au lieu de : point.x * canvasElement.width
+        // On fait : (1 - point.x) * canvasElement.width
+        const mirroredX = (1 - point.x) * canvasElement.width;
+        const y = point.y * canvasElement.height;
+        
+        canvasCtx.arc(mirroredX, y, 4, 0, 2 * Math.PI);
         canvasCtx.fill();
     }
 }
