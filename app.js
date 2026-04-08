@@ -66,7 +66,12 @@ async function predictWebcam() {
         
         // --- RECONNAISSANCE VIA FINGERPOSE ---
         // On convertit les landmarks MediaPipe au format Fingerpose
-        const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
+        // Dans predictWebcam, juste avant GE.estimate :
+        const pixelLandmarks = landmarks.map(l => [
+            (1 - l.x) * canvasElement.width, // On inverse le X ici pour que l'IA "voit" comme toi
+            l.y * canvasElement.height, 
+            l.z
+        ]);
         const estimatedGestures = await GE.estimate(pixelLandmarks, 8.5); // 8.5 = Seuil de confiance
 
         if (estimatedGestures.gestures.length > 0) {
