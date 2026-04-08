@@ -49,6 +49,7 @@ async function setup() {
 setup();
 
 // 2. Boucle de Prédiction
+// 1. Modifie la boucle de dessin dans predictWebcam
 async function predictWebcam() {
     canvasElement.width = video.videoWidth;
     canvasElement.height = video.videoHeight;
@@ -57,44 +58,68 @@ async function predictWebcam() {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     
-    // Effet Miroir
-    canvasCtx.translate(canvasElement.width, 0);
-    canvasCtx.scale(-1, 1);
+    // ON NE FAIT PLUS LE SCALE ICI POUR ÉVITER LES ERREURS
+    // Le miroir est déjà géré par le CSS sur le Canvas.
 
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
         
-        // --- RECONNAISSANCE VIA FINGERPOSE ---
-        // On convertit les landmarks MediaPipe au format Fingerpose
-        // Dans predictWebcam, juste avant GE.estimate :
+        // --- LOGIQUE FINGERPOSE (On inverse le X ici pour l'IA) ---
         const pixelLandmarks = landmarks.map(l => [
-            (1 - l.x) * canvasElement.width, // On inverse le X ici pour que l'IA "voit" comme toi
+            (1 - l.x) * canvasElement.width, 
             l.y * canvasElement.height, 
             l.z
         ]);
-        const estimatedGestures = await GE.estimate(pixelLandmarks, 8.5); // 8.5 = Seuil de confiance
+        
+        const estimatedGestures = await GE.estimate(pixelLandmarks, 7.5);
 
         if (estimatedGestures.gestures.length > 0) {
-            // On prend le geste avec le plus haut score de confiance
             const bestGesture = estimatedGestures.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
             
-            // Si le geste correspond au mot affiché (Challenge)
+            // Comparaison avec le mot affiché
             if (bestGesture.name.toUpperCase() === targetWordEl.innerText) {
                 handleSuccess();
             }
         }
+        
+        // --- DESSIN DES POINTS ---
         drawHand(landmarks);
     }
     canvasCtx.restore();
     window.requestAnimationFrame(predictWebcam);
 }
 
+// 2. Modifie la fonction de dessin (Coordonnées directes)
+function drawHand(landmarks) {
+    for (let point of landmarks) {
+        canvasCtx.fillStyle = "#00ffcc";
+        canvasCtx.beginPath();
+        // On utilise les coordonnées brutes car le CSS scaleX(-1) inverse déjà le canvas
+        const x = point.x * canvasElement.width;
+        const y = point.y * canvasElement.height;
+        
+        canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+        canvasCtx.fill();
+    }
+}
 function handleSuccess() {
     score++;
     scoreEl.innerText = score;
-    // Changement de mot (On alterne entre Victory et Thumbs_Up pour tester)
-    const words = ["VICTORY", "THUMBS_UP"];
-    targetWordEl.innerText = words[Math.floor(Math.random() * words.length)];
+    
+    const pop = document.getElementById("feedback-pop");
+    pop.style.display = "block";
+    
+    // Feedback visuel : flash vert sur la carte
+    document.getElementById("challenge-card").style.borderColor = "#00ff00";
+    
+    setTimeout(() => {
+        pop.style.display = "none";
+        document.getElementById("challenge-card").style.borderColor = "#00ffcc";
+        
+        // Nouveau mot au hasard
+        const words = ["HELLO", "VICTORY", "THUMBS_UP"];
+        targetWordEl.innerText = words[Math.floor(Math.random() * words.length)];
+    }, 1000);
 }
 
 // Dessin simplifié
