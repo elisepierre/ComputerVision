@@ -1,17 +1,33 @@
-<div class="app-container">
-    <header>
-        <h1>ASL <span class="highlight">Flashcards</span></h1>
-        <div id="score-badge">Score: <span id="score">0</span></div>
-    </header>
-    
-    <div id="video-wrapper">
-        <video id="webcam" autoplay playsinline></video>
-        <canvas id="output_canvas"></canvas>
-        <div id="challenge-card">
-            <p>SHOW ME:</p>
-            <h2 id="target-word">HELLO</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL Learning Coach</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.mjs" type="module"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>ASL <span class="highlight">Coach</span></h1>
+            <div class="score-board">Score: <span id="score">0</span></div>
         </div>
+
+        <div class="video-section">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="output_canvas"></canvas>
+            
+            <div id="challenge-card">
+                <p>SHOW ME:</p>
+                <h2 id="target-word">HELLO</h2>
+            </div>
+        </div>
+
+        <div id="status-bar">Initializing Camera...</div>
+        <button id="enableWebcamButton">START CAMERA</button>
     </div>
 
-    <div id="feedback-bar">Position your hand to start...</div>
-</div>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
