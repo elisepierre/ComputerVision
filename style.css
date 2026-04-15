@@ -1,55 +1,91 @@
 body {
-    margin: 0; font-family: 'Segoe UI', sans-serif;
+    margin: 0; 
+    font-family: 'Segoe UI', sans-serif;
     background: linear-gradient(135deg, #1e1e2f, #2a2a40);
-    color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh;
+    color: white; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 100vh;
 }
 
 .app-container {
-    width: 95%; max-width: 500px; text-align: center;
-    background: rgba(255, 255, 255, 0.05); padding: 20px;
-    border-radius: 20px; backdrop-filter: blur(10px); 
+    width: 95%; 
+    max-width: 500px; 
+    text-align: center;
+    background: rgba(255, 255, 255, 0.05); 
+    padding: 20px;
+    border-radius: 20px; 
+    backdrop-filter: blur(10px); 
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.highlight { color: #00ffcc; }
+
 .video-section {
     position: relative;
-    width: 100%; /* S'adapte au container de 500px */
-    aspect-ratio: 4/3; /* Garde les proportions sans déformer */
+    width: 100%; 
+    aspect-ratio: 4/3; 
     margin: 20px 0;
     border-radius: 15px;
-    overflow: hidden;
+    overflow: hidden; /* Pour que les bords soient arrondis */
+    background: #000;
 }
 
-/* ON APPLIQUE LE MIROIR UNIQUEMENT ICI */
+/* --- LE MIROIR ET L'AFFICHAGE --- */
 #webcam, #output_canvas {
     position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    top: 0; 
+    left: 0;
+    width: 100%; 
+    height: 100%;
     object-fit: cover;
-    transform: scaleX(-1); /* La main est dans le bon sens, mais pas le texte au-dessus */
+    /* On inverse ici : la main suit ton mouvement naturel */
+    transform: scaleX(-1); 
+}
+
+#output_canvas {
+    z-index: 5; /* On force les points verts à passer devant la vidéo */
+    pointer-events: none;
 }
 
 #challenge-card {
     position: absolute; 
     bottom: 20px; 
     left: 50%; 
-    transform: translateX(-50%); /* Pas de scaleX ici, donc le texte reste lisible ! */
+    transform: translateX(-50%); /* PAS de scaleX ici pour que le texte soit lisible */
     background: rgba(0, 0, 0, 0.8); 
     padding: 10px 25px; 
     border-radius: 50px;
     border: 2px solid #00ffcc;
-    z-index: 10; /* Pour passer devant le canvas */
+    z-index: 10;
 }
 
-/* Empêcher le texte du challenge d'être inversé par héritage si besoin */
-#challenge-card h2, #challenge-card p {
-    margin: 5px;
-    transform: scaleX(1); 
+/* --- ÉLÉMENTS DE SCORE ET BOUTONS --- */
+.score-board {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
 }
 
 button {
-    background: #00ffcc; color: #1e1e2f; border: none; padding: 12px 30px;
-    border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s;
+    background: #00ffcc; 
+    color: #1e1e2f; 
+    border: none; 
+    padding: 12px 30px;
+    border-radius: 50px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    transition: 0.3s;
 }
 
-button:hover { transform: scale(1.05); box-shadow: 0 0 15px #00ffcc; }
+button:hover { 
+    transform: scale(1.05); 
+    box-shadow: 0 0 15px #00ffcc; 
+}
+
+#status-bar {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
