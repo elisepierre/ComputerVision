@@ -35,54 +35,60 @@ setup();
 
 // 3. Boucle de détection
 async function predictWebcam() {
-    // S'assurer que le canvas fait la même taille que la vidéo
-    if (video.videoWidth > 0) {
-        canvasElement.width = video.videoWidth;
-        canvasElement.height = video.videoHeight;
+    // 1. On vérifie que la vidéo est prête
+    if (video.readyState !== 4) {
+        window.requestAnimationFrame(predictWebcam);
+        return;
     }
 
+    // 2. On ajuste le canvas à la taille de la vidéo à chaque frame
+    canvasElement.width = video.videoWidth;
+    canvasElement.height = video.videoHeight;
+
+    // 3. Détection MediaPipe
     const startTimeMs = performance.now();
     const results = await handLandmarker.detectForVideo(video, startTimeMs);
 
+    // 4. On efface l'ancien dessin avant de faire le nouveau
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
     if (results.landmarks && results.landmarks.length > 0) {
-        const landmarks = results.landmarks[0];
-        
-        // --- DESSIN DES POINTS ---
-        drawHand(landmarks);
+        for (const landmarks of results.landmarks) {
+            // --- DESSIN DES POINTS BLANCS ---
+            drawHand(landmarks);
 
-        // --- RECONNAISSANCE ---
-        const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
-        const estimated = await GE.estimate(pixelLandmarks, 7.5);
-        
-        if (estimated.gestures.length > 0) {
-            console.log("Gesture detected:", estimated.gestures[0].name);
+            // --- RECONNAISSANCE (FINGERPOSE) ---
+            const pixelLandmarks = landmarks.map(l => [
+                l.x * canvasElement.width, 
+                l.y * canvasElement.height, 
+                l.z
+            ]);
+            
+            const estimated = await GE.estimate(pixelLandmarks, 7.5);
+            if (estimated.gestures.length > 0) {
+                const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
+                if (best.name.toUpperCase() === targetWordEl.innerText) {
+                    handleSuccess();
+                }
+            }
         }
     }
 
+    // 5. CRUCIAL : On demande à relancer la fonction pour la frame suivante
     window.requestAnimationFrame(predictWebcam);
 }
 
 function drawHand(landmarks) {
-    // Couleur blanche comme sur ton script Python
-    canvasCtx.fillStyle = "white"; 
-    // Optionnel : ajouter une bordure fine pour que les points ressortent
+    canvasCtx.fillStyle = "white";
     canvasCtx.strokeStyle = "black";
     canvasCtx.lineWidth = 1;
 
     for (const point of landmarks) {
         canvasCtx.beginPath();
-        
-        // On utilise les coordonnées x et y fournies par MediaPipe
-        // (0 à 1) multipliées par la taille réelle du canvas
-        const x = point.x * canvasElement.width;
-        const y = point.y * canvasElement.height;
-        
-        // Dessin du point (arc de cercle)
-        canvasCtx.arc(x, y, 4, 0, 2 * Math.PI);
+        // Utilisation des coordonnées x,y brutes (le miroir est géré par le CSS)
+        canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 4, 0, 2 * Math.PI);
         canvasCtx.fill();
-        canvasCtx.stroke(); // Dessine le contour noir
+        canvasCtx.stroke();
     }
 }
 
