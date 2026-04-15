@@ -65,12 +65,24 @@ async function predictWebcam() {
 }
 
 function drawHand(landmarks) {
-    canvasCtx.fillStyle = "#00ffcc";
+    // Couleur blanche comme sur ton script Python
+    canvasCtx.fillStyle = "white"; 
+    // Optionnel : ajouter une bordure fine pour que les points ressortent
+    canvasCtx.strokeStyle = "black";
+    canvasCtx.lineWidth = 1;
+
     for (const point of landmarks) {
         canvasCtx.beginPath();
-        // On dessine avec les coordonnées normalisées * taille réelle
-        canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 5, 0, 2 * Math.PI);
+        
+        // On utilise les coordonnées x et y fournies par MediaPipe
+        // (0 à 1) multipliées par la taille réelle du canvas
+        const x = point.x * canvasElement.width;
+        const y = point.y * canvasElement.height;
+        
+        // Dessin du point (arc de cercle)
+        canvasCtx.arc(x, y, 4, 0, 2 * Math.PI);
         canvasCtx.fill();
+        canvasCtx.stroke(); // Dessine le contour noir
     }
 }
 
