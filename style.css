@@ -32,9 +32,19 @@ body {
 }
 
 #feedback-pop {
-    display: none; position: fixed; top: 50%; left: 50%;
-    transform: translate(-50%, -50%); font-size: 3rem; color: #00ffcc;
-    font-weight: bold; z-index: 100;
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 255, 204, 0.9);
+    color: #1e1e2f;
+    padding: 20px 40px;
+    border-radius: 50px;
+    font-size: 3rem;
+    font-weight: bold;
+    z-index: 1000;
+    box-shadow: 0 0 30px rgba(0, 255, 204, 0.5);
 }
 
 button {
