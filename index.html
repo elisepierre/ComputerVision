@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Coach</title>
+    <title>ASL Learning Coach</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs" type="module"></script>
 </head>
 <body>
     <div class="app-container">
@@ -24,12 +23,12 @@
             </div>
         </div>
 
-        <div id="feedback-pop" class="pop-msg">EXCELLENT!</div>
-
-        <div id="status-bar">IA Coach loading...</div>
+        <div id="feedback-pop">EXCELLENT!</div>
+        <div id="status-bar">Loading IA Models...</div>
         <button id="enableWebcamButton">START CAMERA</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/fingerpose@0.3.0/dist/fingerpose.min.js"></script>
     <script type="module" src="app.js"></script>
 </body>
