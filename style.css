@@ -1,4 +1,3 @@
-/* --- Tes paramètres de base conservés --- */
 body {
     margin: 0; font-family: 'Segoe UI', sans-serif;
     background: linear-gradient(135deg, #1e1e2f, #2a2a40);
@@ -8,36 +7,23 @@ body {
 .app-container {
     width: 95%; max-width: 500px; text-align: center;
     background: rgba(255, 255, 255, 0.05); padding: 20px;
-    border-radius: 20px; backdrop-filter: blur(10px); 
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .highlight { color: #00ffcc; }
 
-/* --- Correction Miroir et Responsive --- */
 .video-section {
-    position: relative;
-    width: 100%; /* S'adapte au container */
-    aspect-ratio: 4/3; /* Proportions normales */
-    margin: 20px 0;
-    border-radius: 15px;
-    overflow: hidden;
-    background: #000;
+    position: relative; width: 100%; aspect-ratio: 4/3;
+    margin: 20px 0; border-radius: 15px; overflow: hidden; background: #000;
 }
 
-/* ON APPLIQUE LE MIROIR ICI POUR TOUT LE MONDE */
 #webcam, #output_canvas {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    transform: scaleX(-1); /* La main suit ton mouvement */
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%; object-fit: cover;
+    transform: scaleX(-1); /* Effet miroir */
 }
 
-#output_canvas {
-    z-index: 5; /* Points devant */
-    pointer-events: none;
-}
+#output_canvas { z-index: 5; pointer-events: none; }
 
 #challenge-card {
     position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -55,4 +41,5 @@ button {
     background: #00ffcc; color: #1e1e2f; border: none; padding: 12px 30px;
     border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s;
 }
-button:hover { transform: scale(1.05); box-shadow: 0 0 15px #00ffcc; }
+
+#status-bar { margin-top: 10px; font-size: 0.8rem; opacity: 0.6; }
