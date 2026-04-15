@@ -9,9 +9,19 @@ const scoreEl = document.getElementById("score");
 let handLandmarker;
 let GE;
 let score = 0;
-let isProcessing = false; // Verrou anti-lag
 
-const initGestures = () => {
+// 1. Initialisation des modèles
+async function loadModels() {
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: { 
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "GPU" 
+        },
+        runningMode: "VIDEO", numHands: 1
+    });
+
+    // Configuration Fingerpose
     GE = new fp.GestureEstimator([
         fp.Gestures.VictoryGesture,
         fp.Gestures.ThumbsUpGesture,
@@ -22,73 +32,45 @@ const initGestures = () => {
     }
     hello.addCurl(fp.Finger.Thumb, fp.FingerCurl.NoCurl, 1.0);
     GE.addGesture(hello);
-};
 
-async function loadModels() {
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: { 
-            // ON UTILISE LE MODÈLE LITE POUR PLUS DE VITESSE
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "GPU" 
-        },
-        runningMode: "VIDEO",
-        numHands: 1,
-        // OPTIMISATION : On baisse la confiance minimale pour gagner en vitesse
-        minHandDetectionConfidence: 0.5,
-        minHandPresenceConfidence: 0.5
-    });
-    initGestures();
-    document.getElementById("status-bar").innerText = "Turbo Mode Ready!";
+    document.getElementById("status-bar").innerText = "Ready to go!";
 }
 loadModels();
 
-async function renderLoop() {
-    if (!handLandmarker || video.paused || video.readyState < 2) {
-        window.requestAnimationFrame(renderLoop);
-        return;
-    }
+// 2. La boucle de détection (Version Stable)
+async function runDetection() {
+    if (!handLandmarker || video.paused || video.readyState < 2) return;
 
-    // Si l'IA est déjà en train de calculer la frame précédente, on saute celle-ci
-    if (!isProcessing) {
-        isProcessing = true;
+    // On synchronise les tailles
+    canvasElement.width = video.clientWidth;
+    canvasElement.height = video.clientHeight;
+
+    // Détection
+    const results = await handLandmarker.detectForVideo(video, performance.now());
+    
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    if (results.landmarks && results.landmarks.length > 0) {
+        const landmarks = results.landmarks[0];
         
-        canvasElement.width = video.clientWidth;
-        canvasElement.height = video.clientHeight;
+        // DESSIN DES POINTS
+        canvasCtx.fillStyle = "white";
+        for (const point of landmarks) {
+            canvasCtx.beginPath();
+            canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 4, 0, 2 * Math.PI);
+            canvasCtx.fill();
+        }
 
-        const results = await handLandmarker.detectForVideo(video, performance.now());
+        // RECONNAISSANCE
+        const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
+        const estimated = await GE.estimate(pixelLandmarks, 7.5);
         
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-        if (results.landmarks && results.landmarks.length > 0) {
-            const landmarks = results.landmarks[0];
-            
-            // Dessin rapide
-            drawHand(landmarks);
-
-            // Reconnaissance (on ne le fait que si nécessaire pour économiser le CPU)
-            const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
-            const estimated = await GE.estimate(pixelLandmarks, 7.5);
-            
-            if (estimated.gestures.length > 0) {
-                const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
-                if (best.name.toUpperCase() === targetWordEl.innerText) {
-                    handleSuccess();
-                }
+        if (estimated.gestures.length > 0) {
+            const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
+            if (best.name.toUpperCase() === targetWordEl.innerText) {
+                handleSuccess();
             }
         }
-        isProcessing = false;
-    }
-
-    window.requestAnimationFrame(renderLoop);
-}
-
-function drawHand(landmarks) {
-    canvasCtx.fillStyle = "white";
-    for (const point of landmarks) {
-        canvasCtx.beginPath();
-        canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 3, 0, 2 * Math.PI);
-        canvasCtx.fill();
     }
 }
 
@@ -104,13 +86,18 @@ function handleSuccess() {
     }, 1000);
 }
 
+// 3. Démarrage
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
-    // OPTIMISATION : On demande une résolution plus petite pour la caméra
+    // Résolution équilibrée pour éviter le lag
     const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 480, height: 360, frameRate: 30 } 
+        video: { width: 640, height: 480 } 
     });
     video.srcObject = stream;
     video.play();
-    renderLoop();
+    
+    // ON REPREND LE SETINTERVAL QUI MARCHAIT
+    // On le règle à 30ms pour supprimer le délai visuel
+    setInterval(runDetection, 30);
+    
     document.getElementById("enableWebcamButton").style.display = "none";
 });
