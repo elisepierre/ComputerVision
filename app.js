@@ -5,63 +5,49 @@ const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
 const targetWordEl = document.getElementById("target-word");
 const scoreEl = document.getElementById("score");
-const statusBar = document.getElementById("status-bar");
 
 let handLandmarker;
 let GE;
 let score = 0;
 
-// 1. DÉFINITION DES SIGNES (HELLO, GOODBYE, THANK YOU)
+// 1. DÉFINITIONS ULTRA-SIMPLES (Plus faciles à détecter)
 const initGestures = () => {
     GE = new fp.GestureEstimator([]);
 
-    // --- SIGNE : HELLO ---
-    const hello = new fp.GestureDescription('HELLO');
+    // HELLO / GOODBYE (Main à plat)
+    const flatHand = new fp.GestureDescription('HELLO');
     for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        hello.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
+        flatHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0); 
     }
-    hello.addCurl(fp.Finger.Thumb, fp.FingerCurl.NoCurl, 1.0);
-    GE.addGesture(hello);
+    GE.addGesture(flatHand);
 
-    // --- SIGNE : GOODBYE (Similaire à Hello mais souvent avec un léger mouvement/inclinaison) ---
-    const goodbye = new fp.GestureDescription('GOODBYE');
+    // THANK YOU (Main à plat mais un peu penchée)
+    const tiltedHand = new fp.GestureDescription('THANK YOU');
     for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        goodbye.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
+        tiltedHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
     }
-    goodbye.addCurl(fp.Finger.Thumb, fp.FingerCurl.NoCurl, 1.0);
-    // On différencie Goodbye par l'orientation (souvent vers l'avant/horizontal)
-    goodbye.addDirection(fp.Finger.Index, fp.FingerDirection.HorizontalLeft, 0.70);
-    goodbye.addDirection(fp.Finger.Index, fp.FingerDirection.HorizontalRight, 0.70);
-    GE.addGesture(goodbye);
-
-    // --- SIGNE : THANK YOU (Main plate qui part de la bouche vers l'avant) ---
-    const thankYou = new fp.GestureDescription('THANK YOU');
+    tiltedHand.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpRight, 0.5);
+    tiltedHand.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpLeft, 0.5);
+    GE.addGesture(tiltedHand);
+    
+    // GOODBYE (On utilise la même base que Hello pour plus de facilité)
+    const byeHand = new fp.GestureDescription('GOODBYE');
     for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        thankYou.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
+        byeHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
     }
-    thankYou.addCurl(fp.Finger.Thumb, fp.FingerCurl.NoCurl, 1.0);
-    // Signe souvent incliné vers l'avant
-    thankYou.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpRight, 0.70);
-    thankYou.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpLeft, 0.70);
-    GE.addGesture(thankYou);
+    GE.addGesture(byeHand);
 };
 
-// 2. CHARGEMENT DES MODÈLES
 async function loadModels() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: { 
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "GPU" 
-        },
+        baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate: "GPU" },
         runningMode: "VIDEO", numHands: 1
     });
     initGestures();
-    statusBar.innerText = "IA Coach Ready!";
 }
 loadModels();
 
-// 3. BOUCLE DE DÉTECTION
 async function runDetection() {
     if (!handLandmarker || video.paused || video.readyState < 2) return;
 
@@ -74,7 +60,7 @@ async function runDetection() {
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
         
-        // Dessin des points blancs (Ton script Python style)
+        // Dessin des points
         canvasCtx.fillStyle = "white";
         for (const point of landmarks) {
             canvasCtx.beginPath();
@@ -84,53 +70,40 @@ async function runDetection() {
 
         // --- RECONNAISSANCE ---
         const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
-        const estimated = await GE.estimate(pixelLandmarks, 7.5); // 7.5 est la confiance minimale
-        
+        const estimated = await GE.estimate(pixelLandmarks, 6.0); // Seuil baissé à 6.0 pour être plus indulgent
+
         if (estimated.gestures.length > 0) {
             const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
-            const currentTarget = targetWordEl.innerText.trim().toUpperCase();
             
-            console.log("Geste détecté :", best.name); // Pour t'aider à débugger
+            // --- DÉBUGGER VISUEL ---
+            // Affiche en haut de l'écran ce que l'IA voit actuellement
+            canvasCtx.fillStyle = "#00ffcc";
+            canvasCtx.font = "20px Arial";
+            canvasCtx.fillText("IA SEES: " + best.name + " (" + best.score.toFixed(1) + ")", 20, 40);
 
-            if (best.name.toUpperCase() === currentTarget) {
+            if (best.name === targetWordEl.innerText) {
                 handleSuccess();
             }
         }
     }
 }
 
-// 4. LOGIQUE DE RÉUSSITE ET CHANGEMENT ALÉATOIRE
 function handleSuccess() {
-    // Éviter de valider 10 fois par seconde pendant que le geste est maintenu
     if (document.getElementById("feedback-pop").style.display === "block") return;
-
     score++;
     scoreEl.innerText = score;
-    
-    // Affichage du message de succès
-    const pop = document.getElementById("feedback-pop");
-    pop.style.display = "block";
-
+    document.getElementById("feedback-pop").style.display = "block";
     setTimeout(() => { 
-        pop.style.display = "none";
-        
-        // CHOIX ALÉATOIRE D'UN NOUVEAU MOT
+        document.getElementById("feedback-pop").style.display = "none";
         const words = ["HELLO", "GOODBYE", "THANK YOU"];
-        // On s'assure de ne pas retomber sur le même mot immédiatement
-        let newWord;
-        do {
-            newWord = words[Math.floor(Math.random() * words.length)];
-        } while (newWord === targetWordEl.innerText);
-        
-        targetWordEl.innerText = newWord;
-    }, 1500); // 1.5 sec de pause pour que l'utilisateur puisse baisser sa main
+        targetWordEl.innerText = words[Math.floor(Math.random() * words.length)];
+    }, 1500);
 }
 
-// 5. BOUTON START
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
     video.play();
-    setInterval(runDetection, 30); // 30ms pour garder la fluidité
+    setInterval(runDetection, 40);
     document.getElementById("enableWebcamButton").style.display = "none";
 });
