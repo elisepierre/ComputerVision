@@ -33,51 +33,51 @@ async function setup() {
 }
 setup();
 
-// 3. Boucle de détection
-async function predictWebcam() {
-    // 1. On vérifie que la vidéo est prête
-    if (video.readyState !== 4) {
-        window.requestAnimationFrame(predictWebcam);
-        return;
-    }
 
-    // 2. On ajuste le canvas à la taille de la vidéo à chaque frame
+let lastVideoTime = -1;
+
+async function predictWebcam() {
+    // 1. Synchronisation de la taille du canvas
     canvasElement.width = video.videoWidth;
     canvasElement.height = video.videoHeight;
 
-    // 3. Détection MediaPipe
-    const startTimeMs = performance.now();
-    const results = await handLandmarker.detectForVideo(video, startTimeMs);
+    // 2. SÉCURITÉ CRUCIALE : On ne traite l'image que si la vidéo a avancé
+    let startTimeMs = performance.now();
+    
+    if (lastVideoTime !== video.currentTime) {
+        lastVideoTime = video.currentTime;
+        
+        // On passe video.currentTime en millisecondes pour MediaPipe
+        const results = await handLandmarker.detectForVideo(video, startTimeMs);
 
-    // 4. On efface l'ancien dessin avant de faire le nouveau
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        // 3. Dessin
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    if (results.landmarks && results.landmarks.length > 0) {
-        for (const landmarks of results.landmarks) {
-            // --- DESSIN DES POINTS BLANCS ---
-            drawHand(landmarks);
+        if (results.landmarks && results.landmarks.length > 0) {
+            for (const landmarks of results.landmarks) {
+                drawHand(landmarks); // Ta fonction qui dessine les points blancs
 
-            // --- RECONNAISSANCE (FINGERPOSE) ---
-            const pixelLandmarks = landmarks.map(l => [
-                l.x * canvasElement.width, 
-                l.y * canvasElement.height, 
-                l.z
-            ]);
-            
-            const estimated = await GE.estimate(pixelLandmarks, 7.5);
-            if (estimated.gestures.length > 0) {
-                const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
-                if (best.name.toUpperCase() === targetWordEl.innerText) {
-                    handleSuccess();
+                // Reconnaissance Fingerpose
+                const pixelLandmarks = landmarks.map(l => [
+                    l.x * canvasElement.width, 
+                    l.y * canvasElement.height, 
+                    l.z
+                ]);
+                
+                const estimated = await GE.estimate(pixelLandmarks, 7.5);
+                if (estimated.gestures.length > 0) {
+                    const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
+                    if (best.name.toUpperCase() === targetWordEl.innerText) {
+                        handleSuccess();
+                    }
                 }
             }
         }
     }
 
-    // 5. CRUCIAL : On demande à relancer la fonction pour la frame suivante
+    // 4. ON RELANCE LA BOUCLE QUOI QU'IL ARRIVE
     window.requestAnimationFrame(predictWebcam);
 }
-
 function drawHand(landmarks) {
     canvasCtx.fillStyle = "white";
     canvasCtx.strokeStyle = "black";
