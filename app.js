@@ -41,41 +41,52 @@ setup();
 
 // 2. Boucle de Prédiction (Flux continu)
 async function predictWebcam() {
-    // S'assurer que le canvas fait la même taille que la vidéo
+    // 1. On s'assure que la vidéo est bien en train de jouer
+    if (video.paused || video.ended) {
+        window.requestAnimationFrame(predictWebcam);
+        return;
+    }
+
+    // 2. Ajustement du Canvas
     canvasElement.width = video.videoWidth;
     canvasElement.height = video.videoHeight;
 
-    let startTimeMs = performance.now();
-    
-    // SÉCURITÉ : Ne traiter que si la vidéo a avancé
-    if (lastVideoTime !== video.currentTime) {
-        lastVideoTime = video.currentTime;
-        const results = await handLandmarker.detectForVideo(video, startTimeMs);
-
-        // Effacer le canvas
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-        if (results.landmarks && results.landmarks.length > 0) {
-            const landmarks = results.landmarks[0];
+    // 3. LA CORRECTION : On utilise un bloc try/catch pour éviter que l'IA ne bloque tout
+    try {
+        if (lastVideoTime !== video.currentTime) {
+            lastVideoTime = video.currentTime;
             
-            // --- DESSIN DES POINTS BLANCS ---
-            drawHand(landmarks);
+            // On utilise la détection "normale" mais on attend qu'elle finisse
+            const results = await handLandmarker.detectForVideo(video, performance.now());
 
-            // --- RECONNAISSANCE VIA FINGERPOSE ---
-            const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
-            const estimated = await GE.estimate(pixelLandmarks, 7.5);
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-            if (estimated.gestures.length > 0) {
-                const bestGesture = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
-                // Si le geste correspond au challenge
-                if (bestGesture.name.toUpperCase() === targetWordEl.innerText) {
-                    handleSuccess();
+            if (results.landmarks && results.landmarks.length > 0) {
+                const landmarks = results.landmarks[0];
+                drawHand(landmarks); // Tes points blancs
+
+                // --- ON DESACTIVE FINGERPOSE TEMPORAIREMENT POUR TESTER ---
+                // Si ça marche sans Fingerpose, on saura que c'est lui qui fait ramer.
+                /*
+                const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
+                const estimated = await GE.estimate(pixelLandmarks, 7.5);
+                if (estimated.gestures.length > 0) {
+                    const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
+                    if (best.name.toUpperCase() === targetWordEl.innerText) {
+                        handleSuccess();
+                    }
                 }
+                */
             }
         }
+    } catch (error) {
+        console.error("IA Error:", error);
     }
-    // ON RELANCE LA BOUCLE QUOI QU'IL ARRIVE
-    window.requestAnimationFrame(predictWebcam);
+
+    // 4. On relance IMMÉDIATEMENT la boucle
+    setTimeout(() => {
+        window.requestAnimationFrame(predictWebcam);
+    }, 10); // Un léger délai de 10ms aide souvent les Chromebooks à "respirer"
 }
 
 function drawHand(landmarks) {
