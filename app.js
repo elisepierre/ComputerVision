@@ -11,35 +11,31 @@ let GE;
 let score = 0;
 
 // 1. DÉFINITIONS ULTRA-SIMPLES (Plus faciles à détecter)
-// 1. On affine les définitions pour différencier les 3 signes
 const initGestures = () => {
     GE = new fp.GestureEstimator([]);
 
-    // --- HELLO : Main plate, doigts vers le HAUT ---
-    const hello = new fp.GestureDescription('HELLO');
+    // HELLO / GOODBYE (Main à plat)
+    const flatHand = new fp.GestureDescription('HELLO');
     for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        hello.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
-        hello.addDirection(finger, fp.FingerDirection.VerticalUp, 1.0);
+        flatHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0); 
     }
-    GE.addGesture(hello);
+    GE.addGesture(flatHand);
 
-    // --- GOODBYE : Main plate, doigts vers le CÔTÉ (mouvement de balayage) ---
-    const goodbye = new fp.GestureDescription('GOODBYE');
+    // THANK YOU (Main à plat mais un peu penchée)
+    const tiltedHand = new fp.GestureDescription('THANK YOU');
     for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        goodbye.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
-        goodbye.addDirection(finger, fp.FingerDirection.HorizontalLeft, 0.8);
-        goodbye.addDirection(finger, fp.FingerDirection.HorizontalRight, 0.8);
+        tiltedHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
     }
-    GE.addGesture(goodbye);
-
-    // --- THANK YOU : Main plate, DE FACE ou DIAGONALE ---
-    const thankYou = new fp.GestureDescription('THANK YOU');
+    tiltedHand.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpRight, 0.5);
+    tiltedHand.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpLeft, 0.5);
+    GE.addGesture(tiltedHand);
+    
+    // GOODBYE (On utilise la même base que Hello pour plus de facilité)
+    const byeHand = new fp.GestureDescription('GOODBYE');
     for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        thankYou.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
+        byeHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
     }
-    thankYou.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpRight, 0.8);
-    thankYou.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpLeft, 0.8);
-    GE.addGesture(thankYou);
+    GE.addGesture(byeHand);
 };
 
 async function loadModels() {
@@ -52,7 +48,6 @@ async function loadModels() {
 }
 loadModels();
 
-// 2. La boucle avec validation flexible
 async function runDetection() {
     if (!handLandmarker || video.paused || video.readyState < 2) return;
 
@@ -64,34 +59,34 @@ async function runDetection() {
 
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
-        drawHand(landmarks); // Points blancs
+        
+        // Dessin des points
+        canvasCtx.fillStyle = "white";
+        for (const point of landmarks) {
+            canvasCtx.beginPath();
+            canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 4, 0, 2 * Math.PI);
+            canvasCtx.fill();
+        }
 
+        // --- RECONNAISSANCE ---
         const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
-        const estimated = await GE.estimate(pixelLandmarks, 6.5); 
+        const estimated = await GE.estimate(pixelLandmarks, 6.0); // Seuil baissé à 6.0 pour être plus indulgent
 
         if (estimated.gestures.length > 0) {
-            // On trie pour avoir le meilleur score
             const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
             
-            // AFFICHAGE DEBUG
+            // --- DÉBUGGER VISUEL ---
+            // Affiche en haut de l'écran ce que l'IA voit actuellement
             canvasCtx.fillStyle = "#00ffcc";
-            canvasCtx.font = "bold 24px Arial";
-            canvasCtx.fillText(`DETECTED: ${best.name} (${Math.round(best.score)}/10)`, 20, 40);
+            canvasCtx.font = "20px Arial";
+            canvasCtx.fillText("IA SEES: " + best.name + " (" + best.score.toFixed(1) + ")", 20, 40);
 
-            // LOGIQUE DE VALIDATION FLEXIBLE
-            const target = targetWordEl.innerText.trim().toUpperCase();
-            const recognized = best.name.toUpperCase();
-
-            // Si le mot reconnu est contenu dans la cible (ex: HELLO dans HELLO)
-            if (recognized === target || target.includes(recognized)) {
-                if (best.score > 7.0) { // On demande un score minimum pour valider
-                    handleSuccess();
-                }
+            if (best.name === targetWordEl.innerText) {
+                handleSuccess();
             }
         }
     }
 }
-
 
 function handleSuccess() {
     if (document.getElementById("feedback-pop").style.display === "block") return;
