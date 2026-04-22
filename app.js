@@ -9,32 +9,29 @@ const scoreEl = document.getElementById("score");
 let handLandmarker;
 let GE;
 let score = 0;
+let canValidate = true; // Pour éviter de gagner 100 points d'un coup
 
-// 1. DÉFINITIONS ULTRA-SIMPLES (Plus faciles à détecter)
+// 1. DÉFINITIONS DES GESTES
 const initGestures = () => {
     GE = new fp.GestureEstimator([]);
 
-    // HELLO / GOODBYE (Main à plat)
-    const flatHand = new fp.GestureDescription('HELLO');
-    for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
+    // Geste universel "Main Plate" pour HELLO et THANK YOU
+    // C'est le plus simple à reconnaître : aucun doigt plié.
+    const flatHand = new fp.GestureDescription('THANK YOU');
+    for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky, fp.Finger.Thumb]) {
         flatHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0); 
     }
-    GE.addGesture(flatHand);
-
-    // THANK YOU (Main à plat mais un peu penchée)
-    const tiltedHand = new fp.GestureDescription('THANK YOU');
-    for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        tiltedHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
-    }
-    tiltedHand.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpRight, 0.5);
-    tiltedHand.addDirection(fp.Finger.Index, fp.FingerDirection.DiagonalUpLeft, 0.5);
-    GE.addGesture(tiltedHand);
     
-    // GOODBYE (On utilise la même base que Hello pour plus de facilité)
-    const byeHand = new fp.GestureDescription('GOODBYE');
-    for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        byeHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
-    }
+    // On l'ajoute pour les trois mots pour être sûr que tu puisses gagner ton point
+    GE.addGesture(flatHand);
+    
+    // On crée une copie pour HELLO
+    const helloHand = fp.GestureDescription.copy(flatHand);
+    helloHand.name = "HELLO";
+    GE.addGesture(helloHand);
+
+    const byeHand = fp.GestureDescription.copy(flatHand);
+    byeHand.name = "GOODBYE";
     GE.addGesture(byeHand);
 };
 
@@ -45,6 +42,7 @@ async function loadModels() {
         runningMode: "VIDEO", numHands: 1
     });
     initGestures();
+    console.log("Modèles et Gestes chargés !");
 }
 loadModels();
 
@@ -60,7 +58,7 @@ async function runDetection() {
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
         
-        // Dessin des points
+        // --- DESSIN DES POINTS BLANCS ---
         canvasCtx.fillStyle = "white";
         for (const point of landmarks) {
             canvasCtx.beginPath();
@@ -70,18 +68,19 @@ async function runDetection() {
 
         // --- RECONNAISSANCE ---
         const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
-        const estimated = await GE.estimate(pixelLandmarks, 6.0); // Seuil baissé à 6.0 pour être plus indulgent
+        const estimated = await GE.estimate(pixelLandmarks, 6.5); 
 
         if (estimated.gestures.length > 0) {
             const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
             
             // --- DÉBUGGER VISUEL ---
-            // Affiche en haut de l'écran ce que l'IA voit actuellement
             canvasCtx.fillStyle = "#00ffcc";
-            canvasCtx.font = "20px Arial";
-            canvasCtx.fillText("IA SEES: " + best.name + " (" + best.score.toFixed(1) + ")", 20, 40);
+            canvasCtx.font = "bold 24px Arial";
+            canvasCtx.fillText("IA SEES: " + best.name + " (" + Math.round(best.score) + "/10)", 20, 40);
 
-            if (best.name === targetWordEl.innerText) {
+            // Vérification simple (on compare le nom en majuscules)
+            const target = targetWordEl.innerText.toUpperCase().trim();
+            if (best.name.toUpperCase() === target && canValidate) {
                 handleSuccess();
             }
         }
@@ -89,21 +88,31 @@ async function runDetection() {
 }
 
 function handleSuccess() {
-    if (document.getElementById("feedback-pop").style.display === "block") return;
+    canValidate = false; // Bloque la validation
     score++;
     scoreEl.innerText = score;
+    
     document.getElementById("feedback-pop").style.display = "block";
+    
     setTimeout(() => { 
         document.getElementById("feedback-pop").style.display = "none";
+        
+        // Nouveau mot aléatoire
         const words = ["HELLO", "GOODBYE", "THANK YOU"];
-        targetWordEl.innerText = words[Math.floor(Math.random() * words.length)];
-    }, 1500);
+        let nextWord;
+        do {
+            nextWord = words[Math.floor(Math.random() * words.length)];
+        } while (nextWord === targetWordEl.innerText);
+        
+        targetWordEl.innerText = nextWord;
+        canValidate = true; // Débloque pour le prochain mot
+    }, 2000); // 2 secondes de pause pour changer de position
 }
 
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
     video.play();
-    setInterval(runDetection, 40);
+    setInterval(runDetection, 50); // Un peu plus lent (50ms) pour laisser souffler le processeur
     document.getElementById("enableWebcamButton").style.display = "none";
 });
