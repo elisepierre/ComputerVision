@@ -3,32 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Trainer Pro</title>
+    <title>ASL Learning Space</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app-container">
         <header>
-            <h1>ASL <span class="highlight">Coach</span></h1>
-            <div class="score-display">Score: <span id="score">0</span></div>
+            <div class="logo">ASL <span>Academy</span></div>
+            <div class="score-pill">Points: <span id="score">0</span></div>
         </header>
 
-        <div class="main-section">
-            <div class="video-container">
+        <main>
+            <div class="video-frame">
                 <video id="webcam" autoplay playsinline></video>
                 <canvas id="output_canvas"></canvas>
-                <div class="feedback-overlay" id="feedback-pop">EXCELLENT!</div>
+                <div id="feedback-pop" class="success-toast">Great Job! ✨</div>
             </div>
 
-            <div class="control-panel">
-                <div class="target-card">
-                    <p class="label">Show me:</p>
-                    <h2 class="word" id="target-word">GOODBYE</h2>
+            <div class="learning-card">
+                <div class="instruction">
+                    <p>Current Challenge</p>
+                    <h2 id="target-word">GOODBYE</h2>
                 </div>
-                <button id="enableWebcamButton">START ANALYSIS</button>
-                <p id="status-bar" class="status-text">Waiting for AI...</p>
+                
+                <div class="hint">
+                    <p>💡 <span>Pro Tip:</span> Keep your palm flat and show all 5 fingers to the camera!</p>
+                </div>
+
+                <button id="enableWebcamButton">Start Lesson</button>
+                <p id="status-bar">AI is preparing your classroom...</p>
             </div>
-        </div>
+        </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs" type="module"></script>
