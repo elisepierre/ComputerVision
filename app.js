@@ -11,19 +11,14 @@ let GE;
 let score = 0;
 let canValidate = true;
 
-// 1. INITIALISATION : On ne garde QUE Goodbye pour le test
 const initGestures = () => {
     GE = new fp.GestureEstimator([]);
-
-    // Définition de GOODBYE : Paume ouverte, tous les doigts tendus
+    // On définit GOODBYE comme : n'importe quel doigt tendu (pas de boucle/curl)
     const goodbye = new fp.GestureDescription('GOODBYE');
     for(let finger of [fp.Finger.Thumb, fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
         goodbye.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
     }
     GE.addGesture(goodbye);
-    
-    // FORCE LE MOT AU DÉMARRAGE
-    targetWordEl.innerText = "GOODBYE";
 };
 
 async function loadModels() {
@@ -37,14 +32,13 @@ async function loadModels() {
         numHands: 1
     });
     initGestures();
-    document.getElementById("status-bar").innerText = "IA Ready! Show GOODBYE (Open Hand)";
+    document.getElementById("status-bar").innerText = "IA prête ! Montre ta paume.";
 }
 loadModels();
 
 async function runDetection() {
     if (!handLandmarker || video.paused || video.readyState < 2) return;
 
-    // Synchronisation taille
     canvasElement.width = video.clientWidth;
     canvasElement.height = video.clientHeight;
 
@@ -54,7 +48,7 @@ async function runDetection() {
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
         
-        // DESSIN DES POINTS BLANCS
+        // Dessin des points blancs
         canvasCtx.fillStyle = "white";
         for (const point of landmarks) {
             canvasCtx.beginPath();
@@ -62,20 +56,19 @@ async function runDetection() {
             canvasCtx.fill();
         }
 
-        // ANALYSE FINGERPOSE
+        // Reconnaissance
         const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
-        const estimated = await GE.estimate(pixelLandmarks, 7.5); 
+        const estimated = await GE.estimate(pixelLandmarks, 5.0); // Seuil très bas (5.0) pour que ça marche direct
 
         if (estimated.gestures.length > 0) {
             const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
             
-            // DEBUG SUR LE CANVAS
+            // On affiche en gros sur le canvas pour être sûr
             canvasCtx.fillStyle = "#00ffcc";
             canvasCtx.font = "bold 24px Arial";
-            canvasCtx.fillText("IA SEES: " + best.name, 20, 40);
+            canvasCtx.fillText("IA VOIT : GOODBYE", 20, 40);
 
-            // VALIDATION
-            if (best.name === "GOODBYE" && canValidate) {
+            if (canValidate) {
                 handleSuccess();
             }
         }
@@ -87,13 +80,11 @@ function handleSuccess() {
     score++;
     scoreEl.innerText = score;
     
-    // Feedback visuel
     const pop = document.getElementById("feedback-pop");
     pop.style.display = "block";
     
     setTimeout(() => { 
         pop.style.display = "none";
-        // On reste sur GOODBYE pour l'instant pour valider que le score marche
         canValidate = true;
     }, 2000);
 }
@@ -102,6 +93,6 @@ document.getElementById("enableWebcamButton").addEventListener("click", async ()
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
     video.play();
-    setInterval(runDetection, 50); // Boucle stable
+    setInterval(runDetection, 60); // Un peu plus lent pour la stabilité
     document.getElementById("enableWebcamButton").style.display = "none";
 });
