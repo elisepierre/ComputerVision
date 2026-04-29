@@ -9,40 +9,34 @@ const scoreEl = document.getElementById("score");
 let handLandmarker;
 let GE;
 let score = 0;
-let canValidate = true; // Pour éviter de gagner 100 points d'un coup
+let canValidate = true;
 
-// 1. DÉFINITIONS DES GESTES
+// 1. UNIQUE GESTE : La main ouverte (GOODBYE)
 const initGestures = () => {
     GE = new fp.GestureEstimator([]);
 
-    // Geste universel "Main Plate" pour HELLO et THANK YOU
-    // C'est le plus simple à reconnaître : aucun doigt plié.
-    const flatHand = new fp.GestureDescription('THANK YOU');
-    for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky, fp.Finger.Thumb]) {
-        flatHand.addCurl(finger, fp.FingerCurl.NoCurl, 1.0); 
+    const goodbye = new fp.GestureDescription('GOODBYE');
+    // Tous les doigts doivent être tendus (No Curl)
+    for(let finger of [fp.Finger.Thumb, fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
+        goodbye.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
     }
+    GE.addGesture(goodbye);
     
-    // On l'ajoute pour les trois mots pour être sûr que tu puisses gagner ton point
-    GE.addGesture(flatHand);
-    
-    // On crée une copie pour HELLO
-    const helloHand = fp.GestureDescription.copy(flatHand);
-    helloHand.name = "HELLO";
-    GE.addGesture(helloHand);
-
-    const byeHand = fp.GestureDescription.copy(flatHand);
-    byeHand.name = "GOODBYE";
-    GE.addGesture(byeHand);
+    // On force l'affichage initial sur GOODBYE
+    targetWordEl.innerText = "GOODBYE";
 };
 
 async function loadModels() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", delegate: "GPU" },
-        runningMode: "VIDEO", numHands: 1
+        baseOptions: { 
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task", 
+            delegate: "GPU" 
+        },
+        runningMode: "VIDEO", 
+        numHands: 1
     });
     initGestures();
-    console.log("Modèles et Gestes chargés !");
 }
 loadModels();
 
@@ -62,25 +56,23 @@ async function runDetection() {
         canvasCtx.fillStyle = "white";
         for (const point of landmarks) {
             canvasCtx.beginPath();
-            canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 4, 0, 2 * Math.PI);
+            canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 5, 0, 2 * Math.PI);
             canvasCtx.fill();
         }
 
         // --- RECONNAISSANCE ---
         const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
-        const estimated = await GE.estimate(pixelLandmarks, 6.5); 
+        const estimated = await GE.estimate(pixelLandmarks, 7.5); 
 
         if (estimated.gestures.length > 0) {
             const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
             
-            // --- DÉBUGGER VISUEL ---
+            // Debugger visuel pour voir si l'IA te voit
             canvasCtx.fillStyle = "#00ffcc";
             canvasCtx.font = "bold 24px Arial";
-            canvasCtx.fillText("IA SEES: " + best.name + " (" + Math.round(best.score) + "/10)", 20, 40);
+            canvasCtx.fillText("IA SEES: " + best.name, 20, 40);
 
-            // Vérification simple (on compare le nom en majuscules)
-            const target = targetWordEl.innerText.toUpperCase().trim();
-            if (best.name.toUpperCase() === target && canValidate) {
+            if (best.name === "GOODBYE" && canValidate) {
                 handleSuccess();
             }
         }
@@ -88,31 +80,24 @@ async function runDetection() {
 }
 
 function handleSuccess() {
-    canValidate = false; // Bloque la validation
+    canValidate = false;
     score++;
     scoreEl.innerText = score;
     
-    document.getElementById("feedback-pop").style.display = "block";
+    const pop = document.getElementById("feedback-pop");
+    pop.style.display = "block";
     
+    // On remet à zéro après 2 secondes pour pouvoir recommencer
     setTimeout(() => { 
-        document.getElementById("feedback-pop").style.display = "none";
-        
-        // Nouveau mot aléatoire
-        const words = ["HELLO", "GOODBYE", "THANK YOU"];
-        let nextWord;
-        do {
-            nextWord = words[Math.floor(Math.random() * words.length)];
-        } while (nextWord === targetWordEl.innerText);
-        
-        targetWordEl.innerText = nextWord;
-        canValidate = true; // Débloque pour le prochain mot
-    }, 2000); // 2 secondes de pause pour changer de position
+        pop.style.display = "none";
+        canValidate = true;
+    }, 2000);
 }
 
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
     video.play();
-    setInterval(runDetection, 50); // Un peu plus lent (50ms) pour laisser souffler le processeur
+    setInterval(runDetection, 50);
     document.getElementById("enableWebcamButton").style.display = "none";
 });
