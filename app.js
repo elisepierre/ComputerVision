@@ -11,18 +11,18 @@ let GE;
 let score = 0;
 let canValidate = true;
 
-// 1. UNIQUE GESTE : La main ouverte (GOODBYE)
+// 1. INITIALISATION : On ne garde QUE Goodbye pour le test
 const initGestures = () => {
     GE = new fp.GestureEstimator([]);
 
+    // Définition de GOODBYE : Paume ouverte, tous les doigts tendus
     const goodbye = new fp.GestureDescription('GOODBYE');
-    // Tous les doigts doivent être tendus (No Curl)
     for(let finger of [fp.Finger.Thumb, fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
         goodbye.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
     }
     GE.addGesture(goodbye);
     
-    // On force l'affichage initial sur GOODBYE
+    // FORCE LE MOT AU DÉMARRAGE
     targetWordEl.innerText = "GOODBYE";
 };
 
@@ -37,12 +37,14 @@ async function loadModels() {
         numHands: 1
     });
     initGestures();
+    document.getElementById("status-bar").innerText = "IA Ready! Show GOODBYE (Open Hand)";
 }
 loadModels();
 
 async function runDetection() {
     if (!handLandmarker || video.paused || video.readyState < 2) return;
 
+    // Synchronisation taille
     canvasElement.width = video.clientWidth;
     canvasElement.height = video.clientHeight;
 
@@ -52,7 +54,7 @@ async function runDetection() {
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
         
-        // --- DESSIN DES POINTS BLANCS ---
+        // DESSIN DES POINTS BLANCS
         canvasCtx.fillStyle = "white";
         for (const point of landmarks) {
             canvasCtx.beginPath();
@@ -60,18 +62,19 @@ async function runDetection() {
             canvasCtx.fill();
         }
 
-        // --- RECONNAISSANCE ---
+        // ANALYSE FINGERPOSE
         const pixelLandmarks = landmarks.map(l => [l.x * canvasElement.width, l.y * canvasElement.height, l.z]);
         const estimated = await GE.estimate(pixelLandmarks, 7.5); 
 
         if (estimated.gestures.length > 0) {
             const best = estimated.gestures.reduce((p, c) => (p.score > c.score) ? p : c);
             
-            // Debugger visuel pour voir si l'IA te voit
+            // DEBUG SUR LE CANVAS
             canvasCtx.fillStyle = "#00ffcc";
             canvasCtx.font = "bold 24px Arial";
             canvasCtx.fillText("IA SEES: " + best.name, 20, 40);
 
+            // VALIDATION
             if (best.name === "GOODBYE" && canValidate) {
                 handleSuccess();
             }
@@ -84,12 +87,13 @@ function handleSuccess() {
     score++;
     scoreEl.innerText = score;
     
+    // Feedback visuel
     const pop = document.getElementById("feedback-pop");
     pop.style.display = "block";
     
-    // On remet à zéro après 2 secondes pour pouvoir recommencer
     setTimeout(() => { 
         pop.style.display = "none";
+        // On reste sur GOODBYE pour l'instant pour valider que le score marche
         canValidate = true;
     }, 2000);
 }
@@ -98,6 +102,6 @@ document.getElementById("enableWebcamButton").addEventListener("click", async ()
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
     video.play();
-    setInterval(runDetection, 50);
+    setInterval(runDetection, 50); // Boucle stable
     document.getElementById("enableWebcamButton").style.display = "none";
 });
