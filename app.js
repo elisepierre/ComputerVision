@@ -1,86 +1,75 @@
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
+
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
 const scoreEl = document.getElementById("score");
 const statusBar = document.getElementById("status-bar");
 
+let handLandmarker;
 let score = 0;
 let canValidate = true;
 
-// 1. CONFIGURATION DE LA CAMÉRA ET DE L'IA
-const hands = new Hands({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
+// Chargement de l'IA
+async function init() {
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        numHands: 1
+    });
+    statusBar.innerText = "AI Ready! Click Start.";
+}
+init();
 
-hands.setOptions({
-    maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.5,
-    minTrackingConfidence: 0.5
-});
+async function predict() {
+    if (video.readyState >= 2) {
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
 
-// 2. FONCTION DE DÉTECTION (Appelée à chaque frame)
-hands.onResults((results) => {
-    canvasElement.width = video.clientWidth;
-    canvasElement.height = video.clientHeight;
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        const results = await handLandmarker.detectForVideo(video, performance.now());
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        const landmarks = results.multiHandLandmarks[0];
+        if (results.landmarks && results.landmarks.length > 0) {
+            const landmarks = results.landmarks[0];
 
-        // DESSIN DES POINTS BLANCS
-        canvasCtx.fillStyle = "white";
-        for (const point of landmarks) {
-            canvasCtx.beginPath();
-            canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 5, 0, 2 * Math.PI);
-            canvasCtx.fill();
-        }
+            // DESSIN DES POINTS BLANCS
+            canvasCtx.fillStyle = "white";
+            for (const point of landmarks) {
+                canvasCtx.beginPath();
+                canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 5, 0, 2 * Math.PI);
+                canvasCtx.fill();
+            }
 
-        // VALIDATION MATHÉMATIQUE (GOODBYE = Doigts levés)
-        const isIndexUp = landmarks[8].y < landmarks[6].y;
-        const isMiddleUp = landmarks[12].y < landmarks[10].y;
-        const isRingUp = landmarks[16].y < landmarks[14].y;
-        const isPinkyUp = landmarks[20].y < landmarks[18].y;
-
-        if (isIndexUp && isMiddleUp && isRingUp && isPinkyUp && canValidate) {
-            handleSuccess();
+            // VALIDATION SIMPLE (Main ouverte)
+            // Si le bout du majeur (12) est plus haut que sa base (9)
+            if (landmarks[12].y < landmarks[9].y && canValidate) {
+                handleSuccess();
+            }
         }
     }
-});
+    window.requestAnimationFrame(predict);
+}
 
 function handleSuccess() {
     canValidate = false;
     score++;
     scoreEl.innerText = score;
     document.getElementById("feedback-pop").style.display = "block";
-    setTimeout(() => { 
+    setTimeout(() => {
         document.getElementById("feedback-pop").style.display = "none";
         canValidate = true;
     }, 2000);
 }
 
-// 3. BOUTON START
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
-    statusBar.innerText = "Starting Camera...";
-    
-    const camera = new Camera(video, {
-        onFrame: async () => {
-            await hands.send({image: video});
-        },
-        width: 640,
-        height: 480
-    });
-
-    camera.start().then(() => {
-        statusBar.innerText = "Scanning Hand...";
-        document.getElementById("enableWebcamButton").style.display = "none";
-    }).catch(err => {
-        statusBar.innerText = "Error: Camera blocked";
-        console.error(err);
-    });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    video.play();
+    predict();
+    document.getElementById("enableWebcamButton").style.display = "none";
+    statusBar.innerText = "Scanning...";
 });
-
-// Ajouter ce script au début pour la gestion de la caméra MediaPipe
-const script = document.createElement('script');
-script.src = "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
-document.head.appendChild(script);
