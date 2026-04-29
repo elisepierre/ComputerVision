@@ -1,4 +1,4 @@
-import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -8,33 +8,27 @@ const scoreEl = document.getElementById("score");
 const statusBar = document.getElementById("status-bar");
 
 let handLandmarker;
-let GE;
 let score = 0;
 let canValidate = true;
 
-const initGestures = () => {
-    // On crée un geste "GOODBYE" très simple
-    GE = new fp.GestureEstimator([]);
-    const goodbye = new fp.GestureDescription('GOODBYE');
-    for(let finger of [fp.Finger.Index, fp.Finger.Middle, fp.Finger.Ring, fp.Finger.Pinky]) {
-        goodbye.addCurl(finger, fp.FingerCurl.NoCurl, 1.0);
+async function setupIA() {
+    try {
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numHands: 1
+        });
+        statusBar.innerText = "IA Ready. Press Start!";
+    } catch (e) {
+        statusBar.innerText = "Error loading IA. Check connection.";
+        console.error(e);
     }
-    GE.addGesture(goodbye);
-};
-
-async function setup() {
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: { 
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-            delegate: "GPU" 
-        },
-        runningMode: "VIDEO", numHands: 1
-    });
-    initGestures();
-    statusBar.innerText = "IA Prête !";
 }
-setup();
+setupIA();
 
 async function runDetection() {
     if (!handLandmarker || video.readyState < 2) return;
@@ -48,7 +42,7 @@ async function runDetection() {
     if (results.landmarks && results.landmarks.length > 0) {
         const landmarks = results.landmarks[0];
 
-        // 1. DESSIN
+        // 1. DRAW WHITE DOTS (Python style)
         canvasCtx.fillStyle = "white";
         for (const point of landmarks) {
             canvasCtx.beginPath();
@@ -56,20 +50,21 @@ async function runDetection() {
             canvasCtx.fill();
         }
 
-        // 2. LOGIQUE DE VALIDATION (MATHÉMATIQUE SIMPLE)
-        // On vérifie si l'index, le majeur et l'annulaire sont "hauts" (dépliés)
-        const isIndexUp = landmarks[8].y < landmarks[6].y;
-        const isMiddleUp = landmarks[12].y < landmarks[10].y;
-        const isRingUp = landmarks[16].y < landmarks[14].y;
+        // 2. MATH DETECTION (GOODBYE = Open Hand)
+        // We check if fingertips (8, 12, 16, 20) are higher than knuckles (5, 9, 13, 17)
+        const isIndexUp = landmarks[8].y < landmarks[5].y;
+        const isMiddleUp = landmarks[12].y < landmarks[9].y;
+        const isRingUp = landmarks[16].y < landmarks[13].y;
+        const isPinkyUp = landmarks[20].y < landmarks[17].y;
 
-        if (isIndexUp && isMiddleUp && isRingUp && canValidate) {
-            // Affichage debug sur le canvas
+        if (isIndexUp && isMiddleUp && isRingUp && isPinkyUp && canValidate) {
             canvasCtx.fillStyle = "#00ffcc";
-            canvasCtx.fillText("GESTE DÉTECTÉ !", 20, 30);
-            
+            canvasCtx.font = "bold 20px Arial";
+            canvasCtx.fillText("MATCH!", 20, 30);
             handleSuccess();
         }
     }
+    window.requestAnimationFrame(runDetection);
 }
 
 function handleSuccess() {
@@ -83,14 +78,19 @@ function handleSuccess() {
     setTimeout(() => { 
         pop.style.display = "none";
         canValidate = true;
-        // On pourrait changer le mot ici, mais restons sur GOODBYE pour tester
+        // Keep GOODBYE for the test to ensure it works
     }, 2000);
 }
 
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    video.play();
-    setInterval(runDetection, 40); // Boucle forcée
-    document.getElementById("enableWebcamButton").style.display = "none";
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        video.play();
+        runDetection(); // Start the loop
+        document.getElementById("enableWebcamButton").style.display = "none";
+        statusBar.innerText = "Scanning hand...";
+    } catch (err) {
+        alert("Camera access denied.");
+    }
 });
