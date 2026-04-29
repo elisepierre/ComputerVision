@@ -1,61 +1,34 @@
-
-import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs";
-
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
 const scoreEl = document.getElementById("score");
 const statusBar = document.getElementById("status-bar");
 
-let handLandmarker;
 let score = 0;
 let canValidate = true;
 
-async function setupIA() {
-    try {
-        // On force l'URL vers les fichiers WASM de MediaPipe
-        const vision = await FilesetResolver.forVisionTasks(
-            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
-        );
-        
-        handLandmarker = await HandLandmarker.createFromOptions(vision, {
-            baseOptions: {
-                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-                delegate: "GPU"
-            },
-            runningMode: "VIDEO",
-            numHands: 1
-        });
-        
-        statusBar.innerText = "✅ IA Ready. Click START!";
-        console.log("IA Loaded Successfully");
-    } catch (e) {
-        statusBar.innerText = "❌ IA Error: Check Internet / F12 Console";
-        console.error("Critical IA Error:", e);
-    }
-}
+// 1. CONFIGURATION DE LA CAMÉRA ET DE L'IA
+const hands = new Hands({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
 
-// On lance le chargement immédiatement
-setupIA();
+hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+});
 
-async function runDetection() {
-    if (!handLandmarker || video.readyState < 2) {
-        window.requestAnimationFrame(runDetection);
-        return;
-    }
-
+// 2. FONCTION DE DÉTECTION (Appelée à chaque frame)
+hands.onResults((results) => {
     canvasElement.width = video.clientWidth;
     canvasElement.height = video.clientHeight;
-
-    const startTimeMs = performance.now();
-    const results = await handLandmarker.detectForVideo(video, startTimeMs);
-
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    if (results.landmarks && results.landmarks.length > 0) {
-        const landmarks = results.landmarks[0];
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
 
-        // DESSIN DES POINTS
+        // DESSIN DES POINTS BLANCS
         canvasCtx.fillStyle = "white";
         for (const point of landmarks) {
             canvasCtx.beginPath();
@@ -63,8 +36,7 @@ async function runDetection() {
             canvasCtx.fill();
         }
 
-        // DETECTION MATHÉMATIQUE (Doigts vers le haut)
-        // Comparaison : Bout du doigt (8, 12, 16, 20) vs Articulation (6, 10, 14, 18)
+        // VALIDATION MATHÉMATIQUE (GOODBYE = Doigts levés)
         const isIndexUp = landmarks[8].y < landmarks[6].y;
         const isMiddleUp = landmarks[12].y < landmarks[10].y;
         const isRingUp = landmarks[16].y < landmarks[14].y;
@@ -74,8 +46,7 @@ async function runDetection() {
             handleSuccess();
         }
     }
-    window.requestAnimationFrame(runDetection);
-}
+});
 
 function handleSuccess() {
     canValidate = false;
@@ -88,16 +59,28 @@ function handleSuccess() {
     }, 2000);
 }
 
+// 3. BOUTON START
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: 640, height: 480 } 
-        });
-        video.srcObject = stream;
-        video.play();
-        runDetection();
+    statusBar.innerText = "Starting Camera...";
+    
+    const camera = new Camera(video, {
+        onFrame: async () => {
+            await hands.send({image: video});
+        },
+        width: 640,
+        height: 480
+    });
+
+    camera.start().then(() => {
+        statusBar.innerText = "Scanning Hand...";
         document.getElementById("enableWebcamButton").style.display = "none";
-    } catch (err) {
-        alert("Camera error: " + err.message);
-    }
+    }).catch(err => {
+        statusBar.innerText = "Error: Camera blocked";
+        console.error(err);
+    });
 });
+
+// Ajouter ce script au début pour la gestion de la caméra MediaPipe
+const script = document.createElement('script');
+script.src = "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
+document.head.appendChild(script);
