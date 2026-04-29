@@ -6,10 +6,12 @@ body {
 .app-container {
     width: 95%; max-width: 500px; text-align: center;
     background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
+.highlight { color: #00ffcc; }
 .video-section {
     position: relative; width: 100%; aspect-ratio: 4/3;
-    margin: 20px 0; border-radius: 15px; overflow: hidden;
+    margin: 20px 0; border-radius: 15px; overflow: hidden; background: #000;
 }
 #webcam, #output_canvas {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -23,10 +25,11 @@ body {
 }
 #feedback-pop {
     display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: #00ffcc; color: #1e1e2f; padding: 20px; border-radius: 10px;
-    font-weight: bold; font-size: 2rem; z-index: 100;
+    background: #00ffcc; color: #1e1e2f; padding: 20px 40px; border-radius: 50px;
+    font-weight: bold; font-size: 2.5rem; z-index: 100; box-shadow: 0 0 20px #00ffcc;
 }
 button {
-    background: #00ffcc; border: none; padding: 15px 30px; border-radius: 50px;
-    font-weight: bold; cursor: pointer;
+    background: #00ffcc; color: #1e1e2f; border: none; padding: 15px 30px; 
+    border-radius: 50px; font-weight: bold; cursor: pointer; font-size: 1rem;
 }
+#status-bar { margin-top: 10px; font-size: 0.8rem; opacity: 0.5; }
