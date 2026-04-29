@@ -1,8 +1,141 @@
-body { margin: 0; font-family: sans-serif; background: #1e1e2f; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-.app-container { width: 90%; max-width: 500px; text-align: center; }
-.video-section { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 15px; overflow: hidden; }
-#webcam, #output_canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+:root {
+    --primary: #00ffcc; /* Cyan néon */
+    --bg: #0a0a12;
+    --card-bg: rgba(255, 255, 255, 0.05);
+    --text: #ffffff;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 10% 20%, rgba(0, 255, 204, 0.1) 0%, rgba(10, 10, 18, 1) 90%);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.app-container {
+    width: 90%;
+    max-width: 900px;
+    padding: 20px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+h1 { margin: 0; font-size: 1.5rem; font-weight: 300; letter-spacing: 2px; }
+.highlight { color: var(--primary); font-weight: bold; text-shadow: 0 0 10px var(--primary); }
+
+.score-display {
+    font-size: 1.2rem;
+    font-weight: bold;
+    background: var(--card-bg);
+    padding: 10px 20px;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.main-section {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    margin-top: 30px;
+}
+
+/* Section Vidéo */
+.video-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #000;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 2px solid rgba(0, 255, 204, 0.2);
+}
+
+#webcam, #output_canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Mode miroir */
+}
+
 #output_canvas { z-index: 5; }
-#challenge-card { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 20px; border: 2px solid #00ffcc; z-index: 10; }
-#feedback-pop { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #00ffcc; color: #000; padding: 20px; border-radius: 10px; font-weight: bold; z-index: 100; }
-button { background: #00ffcc; padding: 15px 30px; border-radius: 30px; border: none; cursor: pointer; font-weight: bold; }
+
+/* Feedback Pop */
+.feedback-overlay {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 255, 204, 0.9);
+    color: #000;
+    padding: 20px 40px;
+    border-radius: 50px;
+    font-size: 2.5rem;
+    font-weight: bold;
+    z-index: 100;
+    box-shadow: 0 0 30px var(--primary);
+    backdrop-filter: blur(5px);
+}
+
+/* Panneau de Contrôle */
+.control-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.target-card .label { font-size: 0.9rem; opacity: 0.7; margin: 0; }
+.target-card .word {
+    font-size: 2.5rem;
+    margin: 10px 0;
+    color: var(--primary);
+    text-shadow: 0 0 15px var(--primary);
+    font-weight: 800;
+}
+
+button {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    padding: 15px 30px;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 1px;
+}
+
+button:hover {
+    background: var(--primary);
+    color: #000;
+    box-shadow: 0 0 20px var(--primary);
+}
+
+.status-text { font-size: 0.8rem; opacity: 0.5; margin-top: 15px; }
+
+/* Adaptabilité Mobile */
+@media (max-width: 768px) {
+    .main-section { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.2rem; }
+}
