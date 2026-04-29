@@ -10,6 +10,7 @@ let handLandmarker;
 let score = 0;
 let canValidate = true;
 
+// 1. Initialisation
 async function init() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
@@ -24,23 +25,31 @@ async function init() {
 }
 init();
 
+// 2. Définition des connexions de la main (pour dessiner les traits)
+// C'est la "carte" des os de la main.
+const HAND_CONNECTIONS = [
+    [0,1],[1,2],[2,3],[3,4], // Thumb
+    [0,5],[5,6],[6,7],[7,8], // Index
+    [0,9],[9,10],[10,11],[11,12], // Middle
+    [0,13],[13,14],[14,15],[15,16], // Ring
+    [0,17],[17,18],[18,19],[19,20] // Pinky
+];
+
+// 3. Logique stricte (les 5 doigts visibles)
 function checkStrictGoodbye(landmarks) {
-    // 1. Les 4 doigts longs (Index, Middle, Ring, Pinky) doivent être vers le HAUT
-    const indexUp = landmarks[8].y < landmarks[6].y - 0.04;
-    const middleUp = landmarks[12].y < landmarks[10].y - 0.04;
-    const ringUp = landmarks[16].y < landmarks[14].y - 0.04;
-    const pinkyUp = landmarks[20].y < landmarks[18].y - 0.04;
+    // We check if fingertips (8, 12, 16, 20) are significantly higher than knuckles (6, 10, 14, 18)
+    const indexUp = landmarks[8].y < landmarks[6].y - 0.05;
+    const middleUp = landmarks[12].y < landmarks[10].y - 0.05;
+    const ringUp = landmarks[16].y < landmarks[14].y - 0.05;
+    const pinkyUp = landmarks[20].y < landmarks[18].y - 0.05;
 
-    // 2. Le POUCE doit être ouvert (distance entre pouce et index suffisante)
-    const thumbOpen = Math.abs(landmarks[4].x - landmarks[8].x) > 0.1;
+    // Thumb extended (check x distance to middle of palm)
+    const thumbOpen = Math.abs(landmarks[4].x - landmarks[9].x) > 0.09;
 
-    // 3. Paume face caméra (on vérifie que les points ne sont pas trop proches en Z)
-    const palmFlat = Math.abs(landmarks[5].z - landmarks[17].z) < 0.1;
-
-    // Retourne vrai uniquement si TOUT est respecté (5 doigts + paume)
-    return indexUp && middleUp && ringUp && pinkyUp && thumbOpen && palmFlat;
+    return indexUp && middleUp && ringUp && pinkyUp && thumbOpen;
 }
 
+// 4. Boucle de détection
 async function predict() {
     if (video.readyState >= 2) {
         canvasElement.width = video.videoWidth;
@@ -50,16 +59,36 @@ async function predict() {
 
         if (results.landmarks && results.landmarks.length > 0) {
             const landmarks = results.landmarks[0];
+            const width = canvasElement.width;
+            const height = canvasElement.height;
 
-            // Dessin des points style "Apprentissage" (Marron et Blanc)
+            // --- DESSIN STYLÉ (SQUELETTE DIGITAL) ---
+
+            // A. D'abord on dessine les TRAITS (les os)
+            canvasCtx.strokeStyle = "#8a2be2"; // Violet Électrique
+            canvasCtx.lineWidth = 3;
+            canvasCtx.lineCap = "round";
+
+            HAND_CONNECTIONS.forEach(([startIdx, endIdx]) => {
+                const startPoint = landmarks[startIdx];
+                const endPoint = landmarks[endIdx];
+                
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(startPoint.x * width, startPoint.y * height);
+                canvasCtx.lineTo(endPoint.x * width, endPoint.y * height);
+                // Effet de lueur (Néon)
+                canvasCtx.shadowColor = "#00e5ff"; // Cyan
+                canvasCtx.shadowBlur = 15;
+                canvasCtx.stroke();
+            });
+
+            // B. Ensuite on dessine les POINTS (les articulations)
             canvasCtx.fillStyle = "white";
-            canvasCtx.strokeStyle = "#5d4037";
-            canvasCtx.lineWidth = 2;
+            canvasCtx.shadowBlur = 0; // On reset la lueur
             for (const point of landmarks) {
                 canvasCtx.beginPath();
-                canvasCtx.arc(point.x * canvasElement.width, point.y * canvasElement.height, 4, 0, 2 * Math.PI);
+                canvasCtx.arc(point.x * width, point.y * height, 4, 0, 2 * Math.PI);
                 canvasCtx.fill();
-                canvasCtx.stroke();
             }
 
             // Validation
@@ -77,6 +106,10 @@ function handleSuccess() {
     scoreEl.innerText = score;
     const pop = document.getElementById("feedback-pop");
     pop.style.display = "block";
+    
+    // Petite vibration sur les appareils compatibles
+    if ("vibrate" in navigator) navigator.vibrate(100);
+
     setTimeout(() => {
         pop.style.display = "none";
         canValidate = true;
@@ -84,9 +117,14 @@ function handleSuccess() {
 }
 
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    video.play();
-    predict();
-    document.getElementById("enableWebcamButton").style.display = "none";
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+        video.srcObject = stream;
+        video.play();
+        predict();
+        document.getElementById("enableWebcamButton").style.display = "none";
+    } catch (err) {
+        statusBar.innerText = "Error: Camera blocked";
+        alert("Please allow camera access.");
+    }
 });
