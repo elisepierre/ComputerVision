@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Coach</title>
+    <title>ASL Coach - English Edition</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,18 +17,17 @@
             <video id="webcam" autoplay playsinline></video>
             <canvas id="output_canvas"></canvas>
             <div id="challenge-card">
-                <p>MONTRE-MOI :</p>
+                <p>SHOW ME:</p>
                 <h2 id="target-word">GOODBYE</h2>
             </div>
         </div>
 
-        <div id="feedback-pop">EXCELLENT !</div>
-        <div id="status-bar">Chargement...</div>
-        <button id="enableWebcamButton">LANCER LA CAMÉRA</button>
+        <div id="feedback-pop">EXCELLENT!</div>
+        <div id="status-bar">Connecting to IA...</div>
+        <button id="enableWebcamButton">START CAMERA</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs" type="module"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fingerpose@0.3.0/dist/fingerpose.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs" type="module"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
