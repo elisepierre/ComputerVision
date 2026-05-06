@@ -74,56 +74,51 @@ window.onclick = (event) => {
 // --- 3. BASE DE DONNÉES ASL ---
 const ASL_DATABASE = {
     "GOODBYE": (lm) => {
-        const up = lm[8].y < lm[6].y - 0.1 && lm[12].y < lm[10].y - 0.1 && lm[16].y < lm[14].y - 0.1 && lm[20].y < lm[18].y - 0.1;
-        const thumbOut = lm[4].x < lm[2].x - 0.05; // Pouce bien écarté
-        return up && thumbOut;
+        // Tous les doigts levés + paume face caméra
+        const fingersUp = lm[8].y < lm[6].y - 0.07 && lm[12].y < lm[10].y - 0.07 && 
+                          lm[16].y < lm[14].y - 0.07 && lm[20].y < lm[18].y - 0.07;
+        const thumbOut = Math.abs(lm[4].x - lm[2].x) > 0.08;
+        return fingersUp && thumbOut;
     },
     "HELLO": (lm) => {
-        const up = lm[8].y < lm[6].y - 0.1 && lm[12].y < lm[10].y - 0.1;
-        const tight = Math.abs(lm[8].x - lm[12].x) < 0.02; // Doigts collés impératif
-        const othersFolded = lm[16].y > lm[14].y && lm[20].y > lm[18].y;
-        return up && tight && othersFolded;
+        // Doigts collés + levés
+        const together = Math.abs(lm[8].x - lm[12].x) < 0.03;
+        const up = lm[8].y < lm[6].y - 0.07 && lm[12].y < lm[10].y - 0.07;
+        return together && up;
     },
     "I LOVE YOU": (lm) => {
-        const horns = lm[8].y < lm[6].y - 0.1 && lm[20].y < lm[18].y - 0.1;
-        const folded = lm[12].y > lm[10].y + 0.05 && lm[16].y > lm[14].y + 0.05; // Majeur/Annulaire BIEN pliés
+        const horns = lm[8].y < lm[6].y - 0.07 && lm[20].y < lm[18].y - 0.07;
+        const folded = lm[12].y > lm[10].y && lm[16].y > lm[14].y;
         const thumb = lm[4].x < lm[2].x - 0.05;
         return horns && folded && thumb;
     },
     "PEACE": (lm) => {
-        const vShape = Math.abs(lm[8].x - lm[12].x) > 0.07; // Doigts bien écartés en V
-        const up = lm[8].y < lm[6].y - 0.1 && lm[12].y < lm[10].y - 0.1;
-        const othersDown = lm[16].y > lm[14].y && lm[20].y > lm[18].y;
-        return vShape && up && othersDown;
+        const vShape = Math.abs(lm[8].x - lm[12].x) > 0.05;
+        const up = lm[8].y < lm[6].y - 0.07 && lm[12].y < lm[10].y - 0.07;
+        const folded = lm[16].y > lm[14].y && lm[20].y > lm[18].y;
+        return vShape && up && folded;
     },
     "OK": (lm) => {
-        const circle = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.03; // Contact parfait requis
-        const fingersUp = lm[12].y < lm[10].y - 0.08 && lm[16].y < lm[14].y - 0.08 && lm[20].y < lm[18].y - 0.08;
-        return circle && fingersUp;
+        const circle = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.04;
+        const othersUp = lm[12].y < lm[10].y - 0.05 && lm[16].y < lm[14].y - 0.05;
+        return circle && othersUp;
     },
     "YES": (lm) => {
-        // Poing fermé : TOUS les bouts de doigts sous les articulations
         return lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y;
     },
     "NO": (lm) => {
-        // Index et Majeur abaissés vers le pouce
-        const pinch = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.04;
-        const ringFolded = lm[16].y > lm[14].y;
-        return pinch && ringFolded;
+        const touch = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.05;
+        return touch && lm[16].y > lm[14].y;
     },
     "STOP": (lm) => {
-        // Main plate, paume vers l'avant, doigts très hauts
-        const flat = lm[8].y < lm[5].y - 0.15 && lm[12].y < lm[9].y - 0.15 && lm[16].y < lm[13].y - 0.15 && lm[20].y < lm[17].y - 0.15;
-        return flat;
+        return lm[8].y < lm[5].y - 0.12 && lm[12].y < lm[9].y - 0.12 && lm[16].y < lm[13].y - 0.12;
     },
     "THANKS": (lm) => {
-        // Main proche du menton (Z très proche) et doigts tendus
-        return lm[8].y < lm[6].y && (lm[0].z - lm[8].z) > 0.12; 
+        return lm[8].y < lm[6].y && (lm[0].z - lm[8].z) > 0.1;
     },
     "PLEASE": (lm) => {
-        // Main plate, pouce le long de la paume
         const flat = lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y;
-        const thumbIn = Math.abs(lm[4].x - lm[5].x) < 0.03;
+        const thumbIn = Math.abs(lm[4].x - lm[5].x) < 0.04;
         return flat && thumbIn;
     }
 };
