@@ -25,7 +25,7 @@ let aiModel = null;
 
 if (API_KEY) {
     genAI = new GoogleGenerativeAI(API_KEY);
-    aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Utilise un modèle de ta liste
 }
 
 async function getAIInstruction(word) {
@@ -73,16 +73,59 @@ window.onclick = (event) => {
 
 // --- 3. BASE DE DONNÉES ASL ---
 const ASL_DATABASE = {
-    "GOODBYE": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y && Math.abs(lm[4].x - lm[5].x) > 0.1,
-    "HELLO": (lm) => Math.abs(lm[8].x - lm[12].x) < 0.03 && lm[8].y < lm[6].y && lm[12].y < lm[10].y,
-    "I LOVE YOU": (lm) => lm[8].y < lm[6].y && lm[20].y < lm[18].y && lm[4].x < lm[2].x && lm[12].y > lm[10].y && lm[16].y > lm[14].y,
-    "NO": (lm) => Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.05 && lm[16].y > lm[14].y,
-    "YES": (lm) => lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y,
-    "OK": (lm) => Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.05 && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y,
-    "PLEASE": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[4].z > -0.05,
-    "THANKS": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[0].z - lm[8].z > 0.1,
-    "STOP": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && Math.abs(lm[8].x - lm[20].x) < 0.15,
-    "PEACE": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y
+    "GOODBYE": (lm) => {
+        const up = lm[8].y < lm[6].y - 0.1 && lm[12].y < lm[10].y - 0.1 && lm[16].y < lm[14].y - 0.1 && lm[20].y < lm[18].y - 0.1;
+        const thumbOut = lm[4].x < lm[2].x - 0.05; // Pouce bien écarté
+        return up && thumbOut;
+    },
+    "HELLO": (lm) => {
+        const up = lm[8].y < lm[6].y - 0.1 && lm[12].y < lm[10].y - 0.1;
+        const tight = Math.abs(lm[8].x - lm[12].x) < 0.02; // Doigts collés impératif
+        const othersFolded = lm[16].y > lm[14].y && lm[20].y > lm[18].y;
+        return up && tight && othersFolded;
+    },
+    "I LOVE YOU": (lm) => {
+        const horns = lm[8].y < lm[6].y - 0.1 && lm[20].y < lm[18].y - 0.1;
+        const folded = lm[12].y > lm[10].y + 0.05 && lm[16].y > lm[14].y + 0.05; // Majeur/Annulaire BIEN pliés
+        const thumb = lm[4].x < lm[2].x - 0.05;
+        return horns && folded && thumb;
+    },
+    "PEACE": (lm) => {
+        const vShape = Math.abs(lm[8].x - lm[12].x) > 0.07; // Doigts bien écartés en V
+        const up = lm[8].y < lm[6].y - 0.1 && lm[12].y < lm[10].y - 0.1;
+        const othersDown = lm[16].y > lm[14].y && lm[20].y > lm[18].y;
+        return vShape && up && othersDown;
+    },
+    "OK": (lm) => {
+        const circle = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.03; // Contact parfait requis
+        const fingersUp = lm[12].y < lm[10].y - 0.08 && lm[16].y < lm[14].y - 0.08 && lm[20].y < lm[18].y - 0.08;
+        return circle && fingersUp;
+    },
+    "YES": (lm) => {
+        // Poing fermé : TOUS les bouts de doigts sous les articulations
+        return lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y;
+    },
+    "NO": (lm) => {
+        // Index et Majeur abaissés vers le pouce
+        const pinch = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.04;
+        const ringFolded = lm[16].y > lm[14].y;
+        return pinch && ringFolded;
+    },
+    "STOP": (lm) => {
+        // Main plate, paume vers l'avant, doigts très hauts
+        const flat = lm[8].y < lm[5].y - 0.15 && lm[12].y < lm[9].y - 0.15 && lm[16].y < lm[13].y - 0.15 && lm[20].y < lm[17].y - 0.15;
+        return flat;
+    },
+    "THANKS": (lm) => {
+        // Main proche du menton (Z très proche) et doigts tendus
+        return lm[8].y < lm[6].y && (lm[0].z - lm[8].z) > 0.12; 
+    },
+    "PLEASE": (lm) => {
+        // Main plate, pouce le long de la paume
+        const flat = lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y;
+        const thumbIn = Math.abs(lm[4].x - lm[5].x) < 0.03;
+        return flat && thumbIn;
+    }
 };
 
 const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]];
