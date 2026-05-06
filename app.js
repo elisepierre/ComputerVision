@@ -25,7 +25,7 @@ let aiModel = null;
 
 if (API_KEY) {
     genAI = new GoogleGenerativeAI(API_KEY);
-    aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Utilise un modèle de ta liste
+    aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 }
 
 async function getAIInstruction(word) {
@@ -145,21 +145,35 @@ async function init() {
 init();
 
 async function predict() {
-    if (video.readyState >= 2 && handLandmarker) {
-        canvasElement.width = video.videoWidth;
-        canvasElement.height = video.videoHeight;
+    // On vérifie que la vidéo est bien chargée ET qu'elle a des dimensions
+    if (video.readyState >= 2 && video.videoWidth > 0 && handLandmarker) {
+        
+        // CRUCIAL : On synchronise le canvas avec la vidéo réelle
+        if (canvasElement.width !== video.videoWidth) {
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+        }
+
+        // On passe les résultats au détecteur
         const results = await handLandmarker.detectForVideo(video, performance.now());
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
         if (results.landmarks && results.landmarks.length > 0) {
             const landmarks = results.landmarks[0];
             drawHand(landmarks);
+            
             try {
                 const currentTarget = targetWordEl.innerText.toUpperCase();
-                if (ASL_DATABASE[currentTarget] && ASL_DATABASE[currentTarget](landmarks)) {
-                    if (canValidate) handleSuccess();
+                // On s'assure que le mot existe en BDD avant de tester
+                if (ASL_DATABASE[currentTarget]) {
+                    const isCorrect = ASL_DATABASE[currentTarget](landmarks);
+                    if (isCorrect && canValidate) {
+                        handleSuccess();
+                    }
                 }
-            } catch (err) { console.log("Validation skip"); }
+            } catch (err) { 
+                console.log("Erreur de validation :", err); 
+            }
         }
     }
     window.requestAnimationFrame(predict);
