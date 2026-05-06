@@ -1,7 +1,7 @@
 :root {
-    --main-blue: #162447; /* Bleu très profond pour le fond */
-    --electric-violet: #8a2be2; /* La nouvelle couleur "sympa" */
-    --accent-cyan: #00e5ff; /* Cyan pour les détails */
+    --main-blue: #162447;
+    --electric-violet: #8a2be2;
+    --accent-cyan: #00e5ff;
     --bg-beige: #fdfaf5;
     --text-dark: #1b1b2f;
     --white: #ffffff;
@@ -26,8 +26,10 @@ body {
     padding: 25px;
     box-shadow: 0 15px 50px rgba(0,0,0,0.4);
     border: 1px solid rgba(255,255,255,0.1);
+    transition: background-color 0.3s ease; /* Ajouté pour l'animation flash */
 }
 
+/* --- HEADER & LOGO --- */
 header {
     display: flex;
     justify-content: space-between;
@@ -46,9 +48,9 @@ header {
     padding: 10px 25px;
     border-radius: 50px;
     font-weight: 600;
-    box-shadow: 0 4px 10px rgba(22, 36, 71, 0.3);
 }
 
+/* --- LAYOUT --- */
 main {
     display: grid;
     grid-template-columns: 1.6fr 1fr;
@@ -63,6 +65,7 @@ main {
     border: 6px solid var(--white);
     box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     aspect-ratio: 4/3;
+    width: 100%; /* Assure la stabilité */
 }
 
 #webcam, #output_canvas {
@@ -72,6 +75,7 @@ main {
     transform: scaleX(-1);
 }
 
+/* --- CARDS & TARGET --- */
 .learning-panel {
     display: flex;
     flex-direction: column;
@@ -83,10 +87,8 @@ main {
     padding: 25px;
     border-radius: 18px;
     border: 1px solid #eee;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
 
-.current-target .label { margin: 0; color: #888; font-size: 0.9rem; font-weight: 300; }
 .current-target h2 {
     font-size: 3.2rem;
     margin: 5px 0;
@@ -95,17 +97,10 @@ main {
     letter-spacing: -2px;
 }
 
-.hint-card {
-    background: #f4f0ff;
-    font-size: 0.95rem;
-    color: var(--main-blue);
-    border: none;
-    border-left: 5px solid var(--electric-violet);
-}
+/* --- BOUTONS (Correction ici) --- */
 
-.hint-title { font-weight: 600; color: var(--electric-violet); }
-
-button {
+/* Style uniquement pour le bouton de lancement */
+#enableWebcamButton {
     background: var(--electric-violet);
     color: white;
     border: none;
@@ -116,120 +111,71 @@ button {
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 5px 15px rgba(138, 43, 226, 0.3);
+    width: 100%; /* Prend toute la largeur de la colonne */
 }
 
-button:hover {
+#enableWebcamButton:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(138, 43, 226, 0.4);
 }
 
-.status-text { font-size: 0.8rem; text-align: center; margin: 0; color: #888; }
-
-.success-toast {
-    display: none;
-    position: absolute;
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: rgba(255, 255, 255, 0.9);
-    color: var(--electric-violet);
-    padding: 20px 40px;
-    border-radius: 50px;
-    font-weight: 800; font-size: 2.5rem;
-    z-index: 10;
-    border: 3px solid var(--electric-violet);
-    backdrop-filter: blur(5px);
-}
-
-/* Positionnement du bouton */
-.settings-area { position: fixed; top: 20px; left: 20px; z-index: 100; }
-#open-settings { 
-    background: var(--main-blue); color: white; border: none; 
-    padding: 8px 15px; border-radius: 20px; cursor: pointer; opacity: 0.7;
-}
-#open-settings:hover { opacity: 1; background: var(--electric-violet); }
-
-/* Styles de la Modal */
-.modal-content input {
-    width: 100%; padding: 12px; margin: 15px 0; border-radius: 10px;
-    border: 2px solid #eee; box-sizing: border-box;
-}
-.modal-buttons { display: flex; gap: 10px; }
-#save-settings { background: var(--electric-violet); color: white; flex: 2; }
-#close-settings { background: #ccc; color: black; flex: 1; }
-.security-note { font-size: 0.7rem; color: #888; margin-top: 15px; font-style: italic; }
-
-/* Le bouton "?" en haut à droite du mot */
+/* Bouton d'aide (Point d'interrogation) */
 #help-btn {
-    width: 28px;
-    height: 28px;
+    width: 32px; height: 32px;
     border-radius: 50%;
     border: 2px solid var(--electric-violet);
     background: transparent;
     color: var(--electric-violet);
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; align-items: center; justify-content: center;
 }
 
-#help-btn:hover {
-    background: var(--electric-violet);
-    color: white;
-    box-shadow: 0 0 10px var(--electric-violet);
-}
-
-/* Style de la modale d'aide */
+/* --- MODALES --- */
 .modal {
     display: none; 
     position: fixed; 
     z-index: 1000; 
     left: 0; top: 0;
     width: 100%; height: 100%; 
-    background-color: rgba(22, 36, 71, 0.85); /* Fond bleu foncé transparent */
+    background-color: rgba(22, 36, 71, 0.85);
     backdrop-filter: blur(4px);
 }
 
 .modal-content {
     background-color: var(--bg-beige);
-    margin: 15% auto;
+    margin: 10% auto; /* Un peu plus haut */
     padding: 30px;
     border-radius: 20px;
-    width: 80%;
-    max-width: 450px;
+    width: 90%;
+    max-width: 500px;
     position: relative;
     border-left: 10px solid var(--electric-violet);
     box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    color: var(--text-dark);
 }
 
-.close-modal {
-    position: absolute;
-    right: 20px;
-    top: 15px;
-    font-size: 24px;
+/* Boutons à l'intérieur des modales */
+.modal-buttons button {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
     cursor: pointer;
-    font-weight: bold;
-}
-
-.ai-badge {
-    margin-top: 20px;
-    font-size: 0.7rem;
-    color: var(--electric-violet);
     font-weight: 600;
-    text-transform: uppercase;
 }
 
-@media (max-width: 800px) {
-    main { grid-template-columns: 1fr; }
-}
-
+/* --- ANIMATIONS --- */
 .success-flash {
-    animation: flash 0.5s;
+    animation: flash 0.6s ease-out;
 }
 
 @keyframes flash {
     0% { background-color: var(--bg-beige); }
-    50% { background-color: #e0f9f0; }
+    50% { background-color: #d1fae5; } /* Vert menthe très clair */
     100% { background-color: var(--bg-beige); }
+}
+
+/* --- MOBILE --- */
+@media (max-width: 800px) {
+    main { grid-template-columns: 1fr; }
+    .current-target h2 { font-size: 2.5rem; }
 }
