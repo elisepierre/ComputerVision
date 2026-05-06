@@ -187,6 +187,35 @@ function drawHand(landmarks) {
     });
 }
 
+// Variable pour la modale
+const helpModal = document.getElementById("help-modal");
+const closeHelp = document.querySelector(".close-modal");
+
+// 1. Action quand on clique sur "?"
+document.getElementById("help-btn").onclick = async () => {
+    const currentWord = targetWordEl.innerText; // Le mot affiché (HELLO, etc.)
+    helpModal.style.display = "block";
+    
+    const helpText = document.getElementById("help-text");
+    helpText.innerText = "Consulting Gemini AI teacher... 🧠✨";
+
+    // On appelle la fonction Gemini (qu'on a créée à l'étape précédente)
+    const advice = await getAIInstruction(currentWord);
+    helpText.innerText = advice;
+};
+
+// 2. Fermer la modale
+closeHelp.onclick = () => {
+    helpModal.style.display = "none";
+};
+
+// Fermer si on clique en dehors de la fenêtre
+window.onclick = (event) => {
+    if (event.target == helpModal) {
+        helpModal.style.display = "none";
+    }
+};
+
 function handleSuccess() {
     canValidate = false;
     score++;
