@@ -1,6 +1,7 @@
 import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
+// --- ELEMENTS ---
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
@@ -8,14 +9,17 @@ const targetWordEl = document.getElementById("target-word");
 const scoreEl = document.getElementById("score");
 const statusBar = document.getElementById("status-bar");
 
+// Modals
+const settingsModal = document.getElementById("settings-modal");
+const helpModal = document.getElementById("help-modal");
+const helpText = document.getElementById("help-text");
+
 let handLandmarker;
 let score = 0;
 let canValidate = true;
 
-// 1. RÉCUPÉRATION DE LA CLÉ DEPUIS LE NAVIGATEUR
+// --- 1. CONFIGURATION AI (GEMINI) ---
 let API_KEY = localStorage.getItem("GEMINI_STUDENT_KEY");
-
-// 2. INITIALISATION DE GEMINI (si la clé existe)
 let genAI = null;
 let aiModel = null;
 
@@ -24,10 +28,8 @@ if (API_KEY) {
     aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 }
 
-// 3. FONCTION POUR APPELER LE LLM (DÉPLACÉE ICI)
 async function getAIInstruction(word) {
     if (!aiModel) return "Please set your API Key in Settings (⚙️) to see AI tips!";
-    
     const prompt = `Explain in 2 short sentences how to do the ASL sign for "${word}". Focus on hand shape.`;
     try {
         const result = await aiModel.generateContent(prompt);
@@ -37,83 +39,55 @@ async function getAIInstruction(word) {
     }
 }
 
-// 4. GESTION DE L'INTERFACE SETTINGS
-const settingsModal = document.getElementById("settings-modal");
-const keyInput = document.getElementById("api-key-input");
+// --- 2. GESTION DES BOUTONS & INTERFACE ---
 
-document.getElementById("open-settings").onclick = () => settingsModal.style.display = "block";
+// Settings
+document.getElementById("open-settings").onclick = () => settingsModal.style.display = "flex";
 document.getElementById("close-settings").onclick = () => settingsModal.style.display = "none";
-
 document.getElementById("save-settings").onclick = () => {
-    const newKey = keyInput.value.trim();
+    const newKey = document.getElementById("api-key-input").value.trim();
     if (newKey) {
         localStorage.setItem("GEMINI_STUDENT_KEY", newKey);
-        alert("Key saved! Refreshing the page...");
-        location.reload(); // Recharge pour activer l'IA
+        alert("Key saved! Refreshing...");
+        location.reload();
     }
 };
 
-// 5. LIAISON AVEC TON BOUTON "?" EXISTANT
+// Help AI (?)
 document.getElementById("help-btn").onclick = async () => {
-    const currentWord = document.getElementById("target-word").innerText;
-    document.getElementById("help-modal").style.display = "block";
-    document.getElementById("help-text").innerText = "Consulting AI teacher...";
-    
+    const currentWord = targetWordEl.innerText;
+    helpModal.style.display = "flex";
+    helpText.innerText = "Consulting Gemini AI teacher... 🧠✨";
     const advice = await getAIInstruction(currentWord);
-    document.getElementById("help-text").innerText = advice;
+    helpText.innerText = advice;
 };
 
-// --- BASE DE DONNÉES SÉCURISÉE ---
-const ASL_DATABASE = {
-    "GOODBYE": (lm) => {
-        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y && Math.abs(lm[4].x - lm[5].x) > 0.1;
-    },
-    "HELLO": (lm) => {
-        const fingersTogether = Math.abs(lm[8].x - lm[12].x) < 0.03;
-        return fingersTogether && lm[8].y < lm[6].y && lm[12].y < lm[10].y;
-    },
-    "I LOVE YOU": (lm) => {
-        // Index, Auriculaire et Pouce levés / Majeur et Annulaire pliés
-        return lm[8].y < lm[6].y && lm[20].y < lm[18].y && lm[4].x < lm[2].x && lm[12].y > lm[10].y && lm[16].y > lm[14].y;
-    },
-    "NO": (lm) => {
-        // Index et Majeur touchent le Pouce (forme de pince)
-        const distIndexThumb = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y);
-        return distIndexThumb < 0.05 && lm[16].y > lm[14].y;
-    },
-    "YES": (lm) => {
-        // Poing fermé (tous les doigts pliés) qui "hoche"
-        return lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y;
-    },
-    "OK": (lm) => {
-        // Index et Pouce forment un cercle, les 3 autres sont levés
-        const circle = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.05;
-        return circle && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y;
-    },
-    "PLEASE": (lm) => {
-        // Main plate sur la poitrine (on simule par une main plate très proche du centre)
-        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[4].z > -0.05;
-    },
-    "THANKS": (lm) => {
-        // Main plate partant du menton vers l'avant (Z-axis dynamique)
-        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[0].z - lm[8].z > 0.1;
-    },
-    "STOP": (lm) => {
-        // Main plate, paume très verticale et doigts serrés
-        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && Math.abs(lm[8].x - lm[20].x) < 0.15;
-    },
-    "PEACE": (lm) => {
-        // Index et Majeur levés en V, les autres pliés
-        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y;
+document.querySelector(".close-help").onclick = () => helpModal.style.display = "none";
+
+// Fermeture globale des modales
+window.onclick = (event) => {
+    if (event.target.classList.contains('modal-overlay')) {
+        event.target.style.display = "none";
     }
 };
 
-const HAND_CONNECTIONS = [
-    [0,1],[1,2],[2,3],[3,4], [0,5],[5,6],[6,7],[7,8],
-    [0,9],[9,10],[10,11],[11,12], [0,13],[13,14],[14,15],[15,16],
-    [0,17],[17,18],[18,19],[19,20]
-];
+// --- 3. BASE DE DONNÉES ASL ---
+const ASL_DATABASE = {
+    "GOODBYE": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y && Math.abs(lm[4].x - lm[5].x) > 0.1,
+    "HELLO": (lm) => Math.abs(lm[8].x - lm[12].x) < 0.03 && lm[8].y < lm[6].y && lm[12].y < lm[10].y,
+    "I LOVE YOU": (lm) => lm[8].y < lm[6].y && lm[20].y < lm[18].y && lm[4].x < lm[2].x && lm[12].y > lm[10].y && lm[16].y > lm[14].y,
+    "NO": (lm) => Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.05 && lm[16].y > lm[14].y,
+    "YES": (lm) => lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y,
+    "OK": (lm) => Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.05 && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y,
+    "PLEASE": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[4].z > -0.05,
+    "THANKS": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[0].z - lm[8].z > 0.1,
+    "STOP": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && Math.abs(lm[8].x - lm[20].x) < 0.15,
+    "PEACE": (lm) => lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y
+};
 
+const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]];
+
+// --- 4. ENGINE MEDIAPIPE ---
 async function init() {
     try {
         const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
@@ -136,36 +110,26 @@ async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
         canvasElement.width = video.videoWidth;
         canvasElement.height = video.videoHeight;
-
         const results = await handLandmarker.detectForVideo(video, performance.now());
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
         if (results.landmarks && results.landmarks.length > 0) {
             const landmarks = results.landmarks[0];
-            
-            // 1. DESSINER LE SQUELETTE (Indépendant de la validation)
             drawHand(landmarks);
-
-            // 2. TENTER LA VALIDATION (Dans un bloc sécurisé)
             try {
                 const currentTarget = targetWordEl.innerText.toUpperCase();
                 if (ASL_DATABASE[currentTarget] && ASL_DATABASE[currentTarget](landmarks)) {
                     if (canValidate) handleSuccess();
                 }
-            } catch (err) {
-                console.log("Validation skip");
-            }
+            } catch (err) { console.log("Validation skip"); }
         }
     }
-    // Relance TOUJOURS la boucle
     window.requestAnimationFrame(predict);
 }
 
 function drawHand(landmarks) {
     const w = canvasElement.width;
     const h = canvasElement.height;
-
-    // Traits
     canvasCtx.strokeStyle = "#8a2be2";
     canvasCtx.lineWidth = 4;
     canvasCtx.lineCap = "round";
@@ -177,8 +141,6 @@ function drawHand(landmarks) {
             canvasCtx.stroke();
         }
     });
-
-    // Points
     canvasCtx.fillStyle = "white";
     landmarks.forEach(p => {
         canvasCtx.beginPath();
@@ -187,53 +149,17 @@ function drawHand(landmarks) {
     });
 }
 
-// Variable pour la modale
-const helpModal = document.getElementById("help-modal");
-const closeHelp = document.querySelector(".close-modal");
-
-// 1. Action quand on clique sur "?"
-document.getElementById("help-btn").onclick = async () => {
-    const currentWord = targetWordEl.innerText; // Le mot affiché (HELLO, etc.)
-    helpModal.style.display = "block";
-    
-    const helpText = document.getElementById("help-text");
-    helpText.innerText = "Consulting Gemini AI teacher... 🧠✨";
-
-    // On appelle la fonction Gemini (qu'on a créée à l'étape précédente)
-    const advice = await getAIInstruction(currentWord);
-    helpText.innerText = advice;
-};
-
-// 2. Fermer la modale
-closeHelp.onclick = () => {
-    helpModal.style.display = "none";
-};
-
-// Fermer si on clique en dehors de la fenêtre
-window.onclick = (event) => {
-    if (event.target == helpModal) {
-        helpModal.style.display = "none";
-    }
-};
-
 function handleSuccess() {
     canValidate = false;
     score++;
     scoreEl.innerText = score;
-    
-    // Effet visuel sur le container
     document.querySelector('.app-container').classList.add('success-flash');
     document.getElementById("feedback-pop").style.display = "block";
-
     setTimeout(() => {
         document.getElementById("feedback-pop").style.display = "none";
         document.querySelector('.app-container').classList.remove('success-flash');
-        
-        // Nouvelle cible aléatoire parmi les 10 signes
         const signs = Object.keys(ASL_DATABASE);
-        const randomSign = signs[Math.floor(Math.random() * signs.length)];
-        targetWordEl.innerText = randomSign;
-        
+        targetWordEl.innerText = signs[Math.floor(Math.random() * signs.length)];
         canValidate = true;
     }, 1500);
 }
