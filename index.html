@@ -8,6 +8,24 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Bouton Settings en haut à gauche -->
+<div class="settings-area">
+    <button id="open-settings">⚙️ Settings</button>
+</div>
+
+    <!-- Modal de configuration -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h3>AI Configuration</h3>
+            <p>Enter your Gemini API Key to enable the AI Tutor. It is saved only in your browser.</p>
+            <input type="password" id="api-key-input" placeholder="Enter API Key here...">
+            <div class="modal-buttons">
+                <button id="save-settings">Save & Refresh</button>
+                <button id="close-settings">Close</button>
+            </div>
+            <p class="security-note">🔒 Your key is never sent to GitHub. It stays in your LocalStorage.</p>
+        </div>
+    </div>
     <div class="app-container">
         <header>
             <div class="logo">ASL <span class="highlight">Future</span></div>
