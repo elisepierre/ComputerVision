@@ -14,16 +14,45 @@ let canValidate = true;
 // --- BASE DE DONNÉES SÉCURISÉE ---
 const ASL_DATABASE = {
     "GOODBYE": (lm) => {
-        if (!lm[8] || !lm[12] || !lm[16] || !lm[20] || !lm[4]) return false;
-        const allUp = lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y;
-        const thumbOut = Math.abs(lm[4].x - lm[5].x) > 0.1;
-        return allUp && thumbOut;
+        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y && Math.abs(lm[4].x - lm[5].x) > 0.1;
     },
     "HELLO": (lm) => {
-        if (!lm[8] || !lm[12]) return false;
         const fingersTogether = Math.abs(lm[8].x - lm[12].x) < 0.03;
-        const up = lm[8].y < lm[6].y && lm[12].y < lm[10].y;
-        return fingersTogether && up;
+        return fingersTogether && lm[8].y < lm[6].y && lm[12].y < lm[10].y;
+    },
+    "I LOVE YOU": (lm) => {
+        // Index, Auriculaire et Pouce levés / Majeur et Annulaire pliés
+        return lm[8].y < lm[6].y && lm[20].y < lm[18].y && lm[4].x < lm[2].x && lm[12].y > lm[10].y && lm[16].y > lm[14].y;
+    },
+    "NO": (lm) => {
+        // Index et Majeur touchent le Pouce (forme de pince)
+        const distIndexThumb = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y);
+        return distIndexThumb < 0.05 && lm[16].y > lm[14].y;
+    },
+    "YES": (lm) => {
+        // Poing fermé (tous les doigts pliés) qui "hoche"
+        return lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y;
+    },
+    "OK": (lm) => {
+        // Index et Pouce forment un cercle, les 3 autres sont levés
+        const circle = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.05;
+        return circle && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y;
+    },
+    "PLEASE": (lm) => {
+        // Main plate sur la poitrine (on simule par une main plate très proche du centre)
+        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[4].z > -0.05;
+    },
+    "THANKS": (lm) => {
+        // Main plate partant du menton vers l'avant (Z-axis dynamique)
+        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[0].z - lm[8].z > 0.1;
+    },
+    "STOP": (lm) => {
+        // Main plate, paume très verticale et doigts serrés
+        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && Math.abs(lm[8].x - lm[20].x) < 0.15;
+    },
+    "PEACE": (lm) => {
+        // Index et Majeur levés en V, les autres pliés
+        return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y;
     }
 };
 
@@ -110,14 +139,22 @@ function handleSuccess() {
     canValidate = false;
     score++;
     scoreEl.innerText = score;
+    
+    // Effet visuel sur le container
+    document.querySelector('.app-container').classList.add('success-flash');
     document.getElementById("feedback-pop").style.display = "block";
+
     setTimeout(() => {
         document.getElementById("feedback-pop").style.display = "none";
-        // Change de mot
-        const words = Object.keys(ASL_DATABASE);
-        targetWordEl.innerText = words[Math.floor(Math.random() * words.length)];
+        document.querySelector('.app-container').classList.remove('success-flash');
+        
+        // Nouvelle cible aléatoire parmi les 10 signes
+        const signs = Object.keys(ASL_DATABASE);
+        const randomSign = signs[Math.floor(Math.random() * signs.length)];
+        targetWordEl.innerText = randomSign;
+        
         canValidate = true;
-    }, 2000);
+    }, 1500);
 }
 
 document.getElementById("enableWebcamButton").addEventListener("click", async () => {
