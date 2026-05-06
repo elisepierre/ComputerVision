@@ -142,3 +142,13 @@ button:hover {
 @media (max-width: 800px) {
     main { grid-template-columns: 1fr; }
 }
+
+.success-flash {
+    animation: flash 0.5s;
+}
+
+@keyframes flash {
+    0% { background-color: var(--bg-beige); }
+    50% { background-color: #e0f9f0; }
+    100% { background-color: var(--bg-beige); }
+}
