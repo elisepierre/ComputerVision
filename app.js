@@ -1,4 +1,5 @@
 import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -10,6 +11,57 @@ const statusBar = document.getElementById("status-bar");
 let handLandmarker;
 let score = 0;
 let canValidate = true;
+
+// 1. RÉCUPÉRATION DE LA CLÉ DEPUIS LE NAVIGATEUR
+let API_KEY = localStorage.getItem("GEMINI_STUDENT_KEY");
+
+// 2. INITIALISATION DE GEMINI (si la clé existe)
+let genAI = null;
+let aiModel = null;
+
+if (API_KEY) {
+    genAI = new GoogleGenerativeAI(API_KEY);
+    aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+}
+
+// 3. FONCTION POUR APPELER LE LLM (DÉPLACÉE ICI)
+async function getAIInstruction(word) {
+    if (!aiModel) return "Please set your API Key in Settings (⚙️) to see AI tips!";
+    
+    const prompt = `Explain in 2 short sentences how to do the ASL sign for "${word}". Focus on hand shape.`;
+    try {
+        const result = await aiModel.generateContent(prompt);
+        return result.response.text();
+    } catch (e) {
+        return "Error connecting to Gemini. Check your API Key.";
+    }
+}
+
+// 4. GESTION DE L'INTERFACE SETTINGS
+const settingsModal = document.getElementById("settings-modal");
+const keyInput = document.getElementById("api-key-input");
+
+document.getElementById("open-settings").onclick = () => settingsModal.style.display = "block";
+document.getElementById("close-settings").onclick = () => settingsModal.style.display = "none";
+
+document.getElementById("save-settings").onclick = () => {
+    const newKey = keyInput.value.trim();
+    if (newKey) {
+        localStorage.setItem("GEMINI_STUDENT_KEY", newKey);
+        alert("Key saved! Refreshing the page...");
+        location.reload(); // Recharge pour activer l'IA
+    }
+};
+
+// 5. LIAISON AVEC TON BOUTON "?" EXISTANT
+document.getElementById("help-btn").onclick = async () => {
+    const currentWord = document.getElementById("target-word").innerText;
+    document.getElementById("help-modal").style.display = "block";
+    document.getElementById("help-text").innerText = "Consulting AI teacher...";
+    
+    const advice = await getAIInstruction(currentWord);
+    document.getElementById("help-text").innerText = advice;
+};
 
 // --- BASE DE DONNÉES SÉCURISÉE ---
 const ASL_DATABASE = {
