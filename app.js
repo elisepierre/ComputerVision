@@ -95,15 +95,17 @@ function drawStyledHand(landmarks) {
 
 // --- 6. PRÉDICTION & VALIDATION ---
 async function predict() {
+    // 1. On vérifie que la vidéo est prête et que le modèle est chargé
     if (video.readyState >= 2 && handLandmarker) {
         
-        // 1. On s'assure que le canvas a la même taille que la vidéo
+        // 2. Ajustement forcé du canvas aux dimensions de la vidéo
         if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
             canvasElement.width = video.videoWidth;
             canvasElement.height = video.videoHeight;
         }
 
-        // 2. ON AJOUTE LES DIMENSIONS ICI (C'est ça qui corrige l'erreur)
+        // 3. APPEL CORRIGÉ : On passe les dimensions explicitement
+        // C'est ce paramètre qui supprime l'erreur "NORM_RECT"
         const results = await handLandmarker.detectForVideo(video, performance.now(), {
             width: video.videoWidth,
             height: video.videoHeight
@@ -114,30 +116,32 @@ async function predict() {
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
             
-            // 3. On dessine ton squelette stylé
+            // 4. On dessine ton squelette violet
             drawStyledHand(currentHand);
 
-            // 4. On compare avec la lettre demandée
+            // 5. Comparaison avec ton dataset (Template Matching)
             const target = targetWordEl.innerText.toUpperCase();
             const reference = myReferenceDataset[target];
 
             if (reference && canValidate) {
                 const diff = calculateDistance(currentHand, reference);
                 
-                // Barre de progression visuelle dans la console (pour t'aider à régler le seuil)
+                // Pour t'aider à régler la difficulté, on affiche la distance en console
                 console.log(`Distance pour ${target}: ${diff.toFixed(2)}`);
 
-                if (diff < 0.75) { // Seuil légèrement augmenté pour être plus indulgent au début
+                // SEUIL DE RÉUSSITE : 0.75 est une bonne base
+                if (diff < 0.75) {
                     statusBar.innerText = "✨ PARFAIT !";
                     handleSuccess();
                 } else if (diff < 1.3) {
-                    statusBar.innerText = "⚡ Tu y es presque...";
+                    statusBar.innerText = "⚡ Tu y es presque, ajuste tes doigts...";
                 } else {
-                    statusBar.innerText = "Ajuste ta main pour la lettre " + target;
+                    statusBar.innerText = "Fais le signe pour la lettre : " + target;
                 }
             }
         }
     }
+    // On continue la boucle
     window.requestAnimationFrame(predict);
 }
 
