@@ -96,30 +96,44 @@ function drawStyledHand(landmarks) {
 // --- 6. PRÉDICTION & VALIDATION ---
 async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
-        canvasElement.width = video.videoWidth;
-        canvasElement.height = video.videoHeight;
+        
+        // 1. On s'assure que le canvas a la même taille que la vidéo
+        if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+        }
 
-        const results = await handLandmarker.detectForVideo(video, performance.now());
+        // 2. ON AJOUTE LES DIMENSIONS ICI (C'est ça qui corrige l'erreur)
+        const results = await handLandmarker.detectForVideo(video, performance.now(), {
+            width: video.videoWidth,
+            height: video.videoHeight
+        });
+
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
+            
+            // 3. On dessine ton squelette stylé
             drawStyledHand(currentHand);
 
+            // 4. On compare avec la lettre demandée
             const target = targetWordEl.innerText.toUpperCase();
             const reference = myReferenceDataset[target];
 
             if (reference && canValidate) {
                 const diff = calculateDistance(currentHand, reference);
                 
-                // Feedback en temps réel dans la barre de statut
-                if (diff < 0.65) {
-                    statusBar.innerText = "✨ C'est presque ça ! Garde la pose...";
+                // Barre de progression visuelle dans la console (pour t'aider à régler le seuil)
+                console.log(`Distance pour ${target}: ${diff.toFixed(2)}`);
+
+                if (diff < 0.75) { // Seuil légèrement augmenté pour être plus indulgent au début
+                    statusBar.innerText = "✨ PARFAIT !";
                     handleSuccess();
-                } else if (diff < 1.2) {
-                    statusBar.innerText = "⚡ Pas mal, ajuste encore un peu.";
+                } else if (diff < 1.3) {
+                    statusBar.innerText = "⚡ Tu y es presque...";
                 } else {
-                    statusBar.innerText = "❌ Pas encore... regarde l'aide (?)";
+                    statusBar.innerText = "Ajuste ta main pour la lettre " + target;
                 }
             }
         }
