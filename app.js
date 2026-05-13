@@ -33,33 +33,47 @@ imageUpload.onchange = async (e) => {
     if (files.length === 0) return;
 
     statusBar.innerText = `Scanning ${files.length} images...`;
-    myReferenceDataset = {}; // Reset
+    myReferenceDataset = {}; 
 
     for (let file of files) {
-        // Créer un élément image pour MediaPipe
-        const bitmap = await createImageBitmap(file);
-        
-        // On utilise un canvas temporaire pour passer l'image à MediaPipe
-        const tempCanvas = document.createElement("canvas");
-        tempCanvas.width = bitmap.width;
-        tempCanvas.height = bitmap.height;
-        const ctx = tempCanvas.getContext("2d");
-        ctx.drawImage(bitmap, 0, 0);
+        try {
+            const bitmap = await createImageBitmap(file);
+            
+            // Création du canvas avec les dimensions réelles de l'image
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = bitmap.width;
+            tempCanvas.height = bitmap.height;
+            const ctx = tempCanvas.getContext("2d");
+            ctx.drawImage(bitmap, 0, 0);
 
-        const results = await handLandmarker.detect(tempCanvas);
+            // IMPORTANT : On passe l'image ET on s'assure que le mode IMAGE est actif
+            // La détection sur image fixe nécessite ces dimensions pour ne pas bugger
+            const results = await handLandmarker.detect(tempCanvas);
 
-        if (results.landmarks && results.landmarks.length > 0) {
-            // On prend le nom avant le premier underscore (ex: "A_01.jpg" -> "A")
-            const label = file.name.split('_')[0].toUpperCase();
-            myReferenceDataset[label] = results.landmarks[0];
-            console.log(`✅ Extrait : ${label} depuis ${file.name}`);
-        } else {
-            console.warn(`❌ Main non trouvée dans : ${file.name}`);
+            if (results.landmarks && results.landmarks.length > 0) {
+                let label = file.name.split('.')[0].toUpperCase(); 
+                if (file.name.includes('_')) {
+                    label = file.name.split('_')[0].toUpperCase();
+                }
+
+                myReferenceDataset[label] = results.landmarks[0];
+                console.log(`✅ Succès : [${label}] extrait de ${file.name}`);
+            } else {
+                // Si MediaPipe échoue encore, cela peut être dû à la qualité de l'image
+                console.warn(`❌ MediaPipe n'a pas trouvé de main dans : ${file.name}. Vérifiez l'éclairage de la photo.`);
+            }
+        } catch (err) {
+            console.error(`🔥 Erreur technique sur ${file.name}:`, err);
         }
     }
 
-    downloadJSON(myReferenceDataset);
-    statusBar.innerText = "Extraction Done ! JSON downloaded.";
+    const finalSize = Object.keys(myReferenceDataset).length;
+    if (finalSize > 0) {
+        downloadJSON(myReferenceDataset);
+        statusBar.innerText = `Extraction finie : ${finalSize} signes sauvegardés !`;
+    } else {
+        statusBar.innerText = "Aucun signe extrait. Essayez des photos plus nettes.";
+    }
 };
 
 function downloadJSON(data) {
