@@ -140,10 +140,10 @@ async function predict() {
                 console.log(`Distance pour ${target}: ${diff.toFixed(2)}`);
 
                 // SEUIL DE RÉUSSITE : 0.75 est une bonne base
-                if (diff < 2.5) {
+                if (diff < 3.5) {
                     statusBar.innerText = "✨ PARFAIT !";
                     handleSuccess();
-                } else if (diff < 3.5) {
+                } else if (diff < 5.5) {
                     statusBar.innerText = "⚡ Tu y es presque, ajuste tes doigts...";
                 } else {
                     statusBar.innerText = "Fais le signe pour la lettre : " + target;
