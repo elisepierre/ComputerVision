@@ -25,16 +25,15 @@ async function loadReferences() {
         const response = await fetch('reference_signs.json');
         myReferenceDataset = await response.json();
         
-        // --- AJOUTE CES LIGNES ICI ---
         const signs = Object.keys(myReferenceDataset);
-        if (signs.length > 0) {
-            // On choisit la première lettre au hasard pour commencer
-            targetWordEl.innerText = signs[Math.floor(Math.random() * signs.length)];
-            statusBar.innerText = "✅ Prêt ! Fais le signe : " + targetWordEl.innerText;
-        }
-        // -----------------------------
-        
         console.log("Dataset prêt avec", signs.length, "signes.");
+
+        if (signs.length > 0 && targetWordEl) {
+            // Force l'affichage de la première lettre
+            const firstSign = signs[Math.floor(Math.random() * signs.length)];
+            targetWordEl.innerText = firstSign;
+            statusBar.innerText = "✅ Prêt ! Fais le signe : " + firstSign;
+        }
     } catch (err) {
         statusBar.innerText = "❌ Erreur de chargement du dataset JSON";
         console.error(err);
