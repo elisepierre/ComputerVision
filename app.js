@@ -1,179 +1,95 @@
 import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-// --- ELEMENTS ---
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
-const targetWordEl = document.getElementById("target-word");
-const scoreEl = document.getElementById("score");
 const statusBar = document.getElementById("status-bar");
-
-// Modals
-const settingsModal = document.getElementById("settings-modal");
-const helpModal = document.getElementById("help-modal");
-const helpText = document.getElementById("help-text");
+const imageUpload = document.getElementById("image-upload");
+const batchBtn = document.getElementById("batch-process");
 
 let handLandmarker;
-let score = 0;
-let canValidate = true;
+let myReferenceDataset = {};
 
-// --- 1. CONFIGURATION AI (GEMINI) ---
-let API_KEY = localStorage.getItem("GEMINI_STUDENT_KEY");
-let genAI = null;
-let aiModel = null;
-
-if (API_KEY) {
-    genAI = new GoogleGenerativeAI(API_KEY);
-    aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
-}
-
-async function getAIInstruction(word) {
-    if (!aiModel) return "Please set your API Key in Settings (⚙️) to see AI tips!";
-    const prompt = `Explain in 2 short sentences how to do the ASL sign for "${word}". Focus on hand shape.`;
-    try {
-        const result = await aiModel.generateContent(prompt);
-        return result.response.text();
-    } catch (e) {
-        return "Error connecting to Gemini. Check your API Key.";
-    }
-}
-
-// --- 2. GESTION DES BOUTONS & INTERFACE ---
-
-// Settings
-document.getElementById("open-settings").onclick = () => settingsModal.style.display = "flex";
-document.getElementById("close-settings").onclick = () => settingsModal.style.display = "none";
-document.getElementById("save-settings").onclick = () => {
-    const newKey = document.getElementById("api-key-input").value.trim();
-    if (newKey) {
-        localStorage.setItem("GEMINI_STUDENT_KEY", newKey);
-        alert("Key saved! Refreshing...");
-        location.reload();
-    }
-};
-
-// Help AI (?)
-document.getElementById("help-btn").onclick = async () => {
-    const currentWord = targetWordEl.innerText;
-    helpModal.style.display = "flex";
-    helpText.innerText = "Consulting Gemini AI teacher... 🧠✨";
-    const advice = await getAIInstruction(currentWord);
-    helpText.innerText = advice;
-};
-
-document.querySelector(".close-help").onclick = () => helpModal.style.display = "none";
-
-// Fermeture globale des modales
-window.onclick = (event) => {
-    if (event.target.classList.contains('modal-overlay')) {
-        event.target.style.display = "none";
-    }
-};
-
-// --- 3. BASE DE DONNÉES ASL ---
-const ASL_DATABASE = {
-    "GOODBYE": (lm) => {
-        // Tous les doigts levés + paume face caméra
-        const fingersUp = lm[8].y < lm[6].y - 0.07 && lm[12].y < lm[10].y - 0.07 && 
-                          lm[16].y < lm[14].y - 0.07 && lm[20].y < lm[18].y - 0.07;
-        const thumbOut = Math.abs(lm[4].x - lm[2].x) > 0.08;
-        return fingersUp && thumbOut;
-    },
-    "HELLO": (lm) => {
-        // Doigts collés + levés
-        const together = Math.abs(lm[8].x - lm[12].x) < 0.03;
-        const up = lm[8].y < lm[6].y - 0.07 && lm[12].y < lm[10].y - 0.07;
-        return together && up;
-    },
-    "I LOVE YOU": (lm) => {
-        const horns = lm[8].y < lm[6].y - 0.07 && lm[20].y < lm[18].y - 0.07;
-        const folded = lm[12].y > lm[10].y && lm[16].y > lm[14].y;
-        const thumb = lm[4].x < lm[2].x - 0.05;
-        return horns && folded && thumb;
-    },
-    "PEACE": (lm) => {
-        const vShape = Math.abs(lm[8].x - lm[12].x) > 0.05;
-        const up = lm[8].y < lm[6].y - 0.07 && lm[12].y < lm[10].y - 0.07;
-        const folded = lm[16].y > lm[14].y && lm[20].y > lm[18].y;
-        return vShape && up && folded;
-    },
-    "OK": (lm) => {
-        const circle = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.04;
-        const othersUp = lm[12].y < lm[10].y - 0.05 && lm[16].y < lm[14].y - 0.05;
-        return circle && othersUp;
-    },
-    "YES": (lm) => {
-        return lm[8].y > lm[6].y && lm[12].y > lm[10].y && lm[16].y > lm[14].y && lm[20].y > lm[18].y;
-    },
-    "NO": (lm) => {
-        const touch = Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y) < 0.05;
-        return touch && lm[16].y > lm[14].y;
-    },
-    "STOP": (lm) => {
-        return lm[8].y < lm[5].y - 0.12 && lm[12].y < lm[9].y - 0.12 && lm[16].y < lm[13].y - 0.12;
-    },
-    "THANKS": (lm) => {
-        return lm[8].y < lm[6].y && (lm[0].z - lm[8].z) > 0.1;
-    },
-    "PLEASE": (lm) => {
-        const flat = lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y;
-        const thumbIn = Math.abs(lm[4].x - lm[5].x) < 0.04;
-        return flat && thumbIn;
-    }
-};
-
-const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]];
-
-// --- 4. ENGINE MEDIAPIPE ---
+// --- 1. INIT MEDIAPIPE ---
 async function init() {
-    try {
-        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
-        handLandmarker = await HandLandmarker.createFromOptions(vision, {
-            baseOptions: {
-                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-                delegate: "GPU"
-            },
-            runningMode: "VIDEO",
-            numHands: 1
-        });
-        statusBar.innerText = "System Ready";
-    } catch (e) {
-        statusBar.innerText = "Error loading AI";
-    }
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "GPU"
+        },
+        runningMode: "IMAGE", // Mode IMAGE pour le scan automatique
+        numHands: 1
+    });
+    statusBar.innerText = "MediaPipe Loaded - Ready to Scan";
 }
 init();
 
-async function predict() {
-    // On vérifie que la vidéo est bien chargée ET qu'elle a des dimensions
-    if (video.readyState >= 2 && video.videoWidth > 0 && handLandmarker) {
-        
-        // CRUCIAL : On synchronise le canvas avec la vidéo réelle
-        if (canvasElement.width !== video.videoWidth) {
-            canvasElement.width = video.videoWidth;
-            canvasElement.height = video.videoHeight;
-        }
+// --- 2. LOGIQUE D'EXTRACTION AUTOMATIQUE ---
+batchBtn.onclick = () => imageUpload.click();
 
-        // On passe les résultats au détecteur
-        const results = await handLandmarker.detectForVideo(video, performance.now());
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+imageUpload.onchange = async (e) => {
+    const files = e.target.files;
+    if (files.length === 0) return;
+
+    statusBar.innerText = `Scanning ${files.length} images...`;
+    myReferenceDataset = {}; // Reset
+
+    for (let file of files) {
+        // Créer un élément image pour MediaPipe
+        const bitmap = await createImageBitmap(file);
+        
+        // On utilise un canvas temporaire pour passer l'image à MediaPipe
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = bitmap.width;
+        tempCanvas.height = bitmap.height;
+        const ctx = tempCanvas.getContext("2d");
+        ctx.drawImage(bitmap, 0, 0);
+
+        const results = await handLandmarker.detect(tempCanvas);
 
         if (results.landmarks && results.landmarks.length > 0) {
-            const landmarks = results.landmarks[0];
-            drawHand(landmarks);
-            
-            try {
-                const currentTarget = targetWordEl.innerText.toUpperCase();
-                // On s'assure que le mot existe en BDD avant de tester
-                if (ASL_DATABASE[currentTarget]) {
-                    const isCorrect = ASL_DATABASE[currentTarget](landmarks);
-                    if (isCorrect && canValidate) {
-                        handleSuccess();
-                    }
-                }
-            } catch (err) { 
-                console.log("Erreur de validation :", err); 
-            }
+            // On prend le nom avant le premier underscore (ex: "A_01.jpg" -> "A")
+            const label = file.name.split('_')[0].toUpperCase();
+            myReferenceDataset[label] = results.landmarks[0];
+            console.log(`✅ Extrait : ${label} depuis ${file.name}`);
+        } else {
+            console.warn(`❌ Main non trouvée dans : ${file.name}`);
+        }
+    }
+
+    downloadJSON(myReferenceDataset);
+    statusBar.innerText = "Extraction Done ! JSON downloaded.";
+};
+
+function downloadJSON(data) {
+    const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "reference_signs.json";
+    a.click();
+}
+
+// --- 3. WEBCAM (Pour tester après) ---
+document.getElementById("enableWebcamButton").onclick = async () => {
+    // On change le mode en VIDEO pour la webcam
+    await handLandmarker.setOptions({ runningMode: "VIDEO" });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    video.play();
+    predict();
+};
+
+async function predict() {
+    if (video.readyState >= 2) {
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
+        const results = await handLandmarker.detectForVideo(video, performance.now());
+        
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        if (results.landmarks && results.landmarks.length > 0) {
+            drawHand(results.landmarks[0]);
         }
     }
     window.requestAnimationFrame(predict);
@@ -184,42 +100,9 @@ function drawHand(landmarks) {
     const h = canvasElement.height;
     canvasCtx.strokeStyle = "#8a2be2";
     canvasCtx.lineWidth = 4;
-    canvasCtx.lineCap = "round";
-    HAND_CONNECTIONS.forEach(([s, e]) => {
-        if (landmarks[s] && landmarks[e]) {
-            canvasCtx.beginPath();
-            canvasCtx.moveTo(landmarks[s].x * w, landmarks[s].y * h);
-            canvasCtx.lineTo(landmarks[e].x * w, landmarks[e].y * h);
-            canvasCtx.stroke();
-        }
-    });
-    canvasCtx.fillStyle = "white";
     landmarks.forEach(p => {
         canvasCtx.beginPath();
-        canvasCtx.arc(p.x * w, p.y * h, 4, 0, 2 * Math.PI);
+        canvasCtx.arc(p.x * w, p.y * h, 3, 0, 2 * Math.PI);
         canvasCtx.fill();
     });
 }
-
-function handleSuccess() {
-    canValidate = false;
-    score++;
-    scoreEl.innerText = score;
-    document.querySelector('.app-container').classList.add('success-flash');
-    document.getElementById("feedback-pop").style.display = "block";
-    setTimeout(() => {
-        document.getElementById("feedback-pop").style.display = "none";
-        document.querySelector('.app-container').classList.remove('success-flash');
-        const signs = Object.keys(ASL_DATABASE);
-        targetWordEl.innerText = signs[Math.floor(Math.random() * signs.length)];
-        canValidate = true;
-    }, 1500);
-}
-
-document.getElementById("enableWebcamButton").addEventListener("click", async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    video.play();
-    predict();
-    document.getElementById("enableWebcamButton").style.display = "none";
-});
