@@ -143,7 +143,7 @@ async function predict() {
                 if (diff < 2.5) {
                     statusBar.innerText = "✨ PARFAIT !";
                     handleSuccess();
-                } else if (diff < 1.3) {
+                } else if (diff < 3.5) {
                     statusBar.innerText = "⚡ Tu y es presque, ajuste tes doigts...";
                 } else {
                     statusBar.innerText = "Fais le signe pour la lettre : " + target;
