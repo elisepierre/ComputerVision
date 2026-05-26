@@ -32,8 +32,8 @@ function setupAI() {
         try {
             genAI = new GoogleGenerativeAI(API_KEY);
             // Utilise "gemini-2.0-flash" (la plus rapide et performante pour ton projet)
-            aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-            console.log("🤖 Gemini 2.0 Flash est prêt !");
+            aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            console.log("🤖 Gemini 2.5 Flash est prêt !");
         } catch (e) {
             console.error("Erreur setup AI:", e);
         }
