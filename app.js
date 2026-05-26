@@ -26,6 +26,21 @@ let API_KEY = localStorage.getItem("GEMINI_API_KEY");
 let genAI = null;
 let aiModel = null;
 
+function setupAI() {
+    API_KEY = localStorage.getItem("GEMINI_API_KEY");
+    if (API_KEY) {
+        try {
+            genAI = new GoogleGenerativeAI(API_KEY);
+            aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            console.log("🤖 Gemini IA prête !");
+        } catch (e) {
+            console.error("Erreur setup AI:", e);
+        }
+    }
+}
+// On appelle setupAI après l'avoir définie
+setupAI();
+
 // --- 2. CHARGEMENT DU DATASET ---
 async function loadReferences() {
     try {
@@ -36,7 +51,6 @@ async function loadReferences() {
         console.log("Dataset prêt avec", signs.length, "signes.");
 
         if (signs.length > 0 && targetWordEl) {
-            // Force l'affichage de la première lettre
             const firstSign = signs[Math.floor(Math.random() * signs.length)];
             targetWordEl.innerText = firstSign;
             statusBar.innerText = "✅ Prêt ! Fais le signe : " + firstSign;
@@ -47,17 +61,7 @@ async function loadReferences() {
     }
 }
 
-function setupAI() {
-    API_KEY = localStorage.getItem("GEMINI_API_KEY");
-    if (API_KEY) {
-        genAI = new GoogleGenerativeAI(API_KEY);
-        // Utilisation de 2.0 Flash pour la rapidité
-        aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        console.log("🤖 Gemini IA prête !");
-    }
-}
-setupAI();
-
+// --- 3. ÉVÉNEMENTS (MODALES & BOUTONS) ---
 settingsBtn.onclick = () => {
     settingsModal.style.display = "flex";
     if (API_KEY) apiKeyInput.value = API_KEY;
@@ -67,7 +71,7 @@ saveSettingsBtn.onclick = () => {
     const key = apiKeyInput.value.trim();
     if (key) {
         localStorage.setItem("GEMINI_API_KEY", key);
-        setupAI(); // On réinitialise avec la nouvelle clé
+        setupAI(); 
         settingsModal.style.display = "none";
         statusBar.innerText = "✅ Clé API enregistrée !";
     }
@@ -96,16 +100,16 @@ helpBtn.onclick = async () => {
         helpText.innerText = response.text();
     } catch (error) {
         console.error("Erreur Gemini:", error);
-        helpText.innerText = "Désolé, je n'ai pas pu obtenir d'aide. Vérifie ta clé API ou ta connexion.";
+        helpText.innerText = "Désolé, l'IA ne répond pas. Vérifie ta clé.";
     }
 };
 
-// Fermer la modale d'aide
-document.querySelector(".close-help").onclick = () => {
-    helpModal.style.display = "none";
-};
+const closeHelpBtn = document.querySelector(".close-help");
+if (closeHelpBtn) {
+    closeHelpBtn.onclick = () => { helpModal.style.display = "none"; };
+}
 
-// --- 3. MATHS : DISTANCE EUCLIDIENNE ---
+// --- 4. MATHS & DESSIN ---
 function calculateDistance(hand1, hand2) {
     let totalDist = 0;
     for (let i = 0; i < 21; i++) {
@@ -118,7 +122,106 @@ function calculateDistance(hand1, hand2) {
     return totalDist;
 }
 
-// --- 4. INITIALISATION ---
+const HAND_CONNECTIONS = [
+    [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
+    [0, 9], [9, 10], [10, 11], [11, 12], [0, 13], [13, 14], [14, 15], [15, 16],
+    [0, 17], [17, 18], [18, 19], [19, 20], [5, 9], [9, 13], [13, 17]
+];
+
+function drawStyledHand(landmarks) {
+    const w = canvasElement.width;
+    const h = canvasElement.height;
+    canvasCtx.strokeStyle = "#8a2be2";
+    canvasCtx.lineWidth = 4;
+    canvasCtx.lineCap = "round";
+
+    HAND_CONNECTIONS.forEach(([start, end]) => {
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(landmarks[start].x * w, landmarks[start].y * h);
+        canvasCtx.lineTo(landmarks[end].x * w, landmarks[end].y * h);
+        canvasCtx.stroke();
+    });
+
+    landmarks.forEach(p => {
+        canvasCtx.beginPath();
+        canvasCtx.arc(p.x * w, p.y * h, 5, 0, 2 * Math.PI);
+        canvasCtx.fillStyle = "white";
+        canvasCtx.fill();
+    });
+}
+
+// --- 5. PRÉDICTION & WEBCAM ---
+async function predict() {
+    if (video.readyState >= 2 && handLandmarker) {
+        if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+        }
+
+        const results = await handLandmarker.detectForVideo(video, performance.now(), {
+            width: video.videoWidth,
+            height: video.videoHeight
+        });
+
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+        if (results.landmarks && results.landmarks.length > 0) {
+            const currentHand = results.landmarks[0];
+            drawStyledHand(currentHand);
+
+            const target = targetWordEl.innerText.toUpperCase();
+            const reference = myReferenceDataset[target];
+
+            if (reference && canValidate) {
+                const diff = calculateDistance(currentHand, reference);
+                console.log(`Distance pour ${target}: ${diff.toFixed(2)}`);
+
+                if (diff < 3.5) {
+                    statusBar.innerText = "✨ PARFAIT !";
+                    handleSuccess();
+                } else if (diff < 5.5) {
+                    statusBar.innerText = "⚡ Tu y es presque...";
+                } else {
+                    statusBar.innerText = "Fais le signe : " + target;
+                }
+            }
+        }
+    }
+    window.requestAnimationFrame(predict);
+}
+
+function handleSuccess() {
+    canValidate = false;
+    score++;
+    scoreEl.innerText = score;
+    const feedback = document.getElementById("feedback-pop");
+    feedback.innerText = "BIEN ! ✨";
+    feedback.style.display = "block";
+    
+    setTimeout(() => {
+        feedback.style.display = "none";
+        const signs = Object.keys(myReferenceDataset);
+        targetWordEl.innerText = signs[Math.floor(Math.random() * signs.length)];
+        canValidate = true;
+    }, 2000);
+}
+
+document.getElementById("enableWebcamButton").onclick = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play();
+            predict();
+            document.getElementById("enableWebcamButton").innerText = "Webcam Active ✅";
+            document.getElementById("enableWebcamButton").disabled = true;
+        };
+    } catch (err) {
+        alert("Erreur webcam : " + err.message);
+    }
+};
+
+// --- 6. LANCEMENT ---
 async function init() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
@@ -132,124 +235,3 @@ async function init() {
     loadReferences();
 }
 init();
-
-// --- 5. LOGIQUE DE DESSIN (Squelette Violet) ---
-const HAND_CONNECTIONS = [
-    [0, 1], [1, 2], [2, 3], [3, 4],       // Pouce
-    [0, 5], [5, 6], [6, 7], [7, 8],       // Index
-    [0, 9], [9, 10], [10, 11], [11, 12],  // Majeur
-    [0, 13], [13, 14], [14, 15], [15, 16], // Annulaire
-    [0, 17], [17, 18], [18, 19], [19, 20], // Auriculaire
-    [5, 9], [9, 13], [13, 17]             // Paume
-];
-
-function drawStyledHand(landmarks) {
-    const w = canvasElement.width;
-    const h = canvasElement.height;
-
-    // 1. Dessiner les traits violets
-    canvasCtx.strokeStyle = "#8a2be2";
-    canvasCtx.lineWidth = 4;
-    canvasCtx.lineCap = "round";
-
-    HAND_CONNECTIONS.forEach(([start, end]) => {
-        canvasCtx.beginPath();
-        canvasCtx.moveTo(landmarks[start].x * w, landmarks[start].y * h);
-        canvasCtx.lineTo(landmarks[end].x * w, landmarks[end].y * h);
-        canvasCtx.stroke();
-    });
-
-    // 2. Dessiner les points
-    landmarks.forEach(p => {
-        canvasCtx.beginPath();
-        canvasCtx.arc(p.x * w, p.y * h, 5, 0, 2 * Math.PI);
-        canvasCtx.fillStyle = "white";
-        canvasCtx.fill();
-    });
-}
-
-// --- 6. PRÉDICTION & VALIDATION ---
-async function predict() {
-    // 1. On vérifie que la vidéo est prête et que le modèle est chargé
-    if (video.readyState >= 2 && handLandmarker) {
-        
-        // 2. Ajustement forcé du canvas aux dimensions de la vidéo
-        if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
-            canvasElement.width = video.videoWidth;
-            canvasElement.height = video.videoHeight;
-        }
-
-        // 3. APPEL CORRIGÉ : On passe les dimensions explicitement
-        // C'est ce paramètre qui supprime l'erreur "NORM_RECT"
-        const results = await handLandmarker.detectForVideo(video, performance.now(), {
-            width: video.videoWidth,
-            height: video.videoHeight
-        });
-
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-        if (results.landmarks && results.landmarks.length > 0) {
-            const currentHand = results.landmarks[0];
-            
-            // 4. On dessine ton squelette violet
-            drawStyledHand(currentHand);
-
-            // 5. Comparaison avec ton dataset (Template Matching)
-            const target = targetWordEl.innerText.toUpperCase();
-            const reference = myReferenceDataset[target];
-
-            if (reference && canValidate) {
-                const diff = calculateDistance(currentHand, reference);
-                
-                // Pour t'aider à régler la difficulté, on affiche la distance en console
-                console.log(`Distance pour ${target}: ${diff.toFixed(2)}`);
-
-                // SEUIL DE RÉUSSITE : 0.75 est une bonne base
-                if (diff < 3.5) {
-                    statusBar.innerText = "✨ PARFAIT !";
-                    handleSuccess();
-                } else if (diff < 5.5) {
-                    statusBar.innerText = "⚡ Tu y es presque, ajuste tes doigts...";
-                } else {
-                    statusBar.innerText = "Fais le signe pour la lettre : " + target;
-                }
-            }
-        }
-    }
-    // On continue la boucle
-    window.requestAnimationFrame(predict);
-}
-
-function handleSuccess() {
-    canValidate = false;
-    score++;
-    scoreEl.innerText = score;
-    
-    document.getElementById("feedback-pop").innerText = "BIEN ! ✨";
-    document.getElementById("feedback-pop").style.display = "block";
-    
-    setTimeout(() => {
-        document.getElementById("feedback-pop").style.display = "none";
-        const signs = Object.keys(myReferenceDataset);
-        targetWordEl.innerText = signs[Math.floor(Math.random() * signs.length)];
-        canValidate = true;
-    }, 2000);
-}
-
-// --- 7. ACTIVATION WEBCAM ---
-document.getElementById("enableWebcamButton").onclick = async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        video.onloadedmetadata = () => {
-            video.play();
-            predict(); // On lance la boucle seulement quand la vidéo est prête
-            document.getElementById("enableWebcamButton").innerText = "Webcam Active ✅";
-            document.getElementById("enableWebcamButton").disabled = true;
-        };
-    } catch (err) {
-        alert("Erreur webcam : " + err.message);
-    }
-};
-    
-
