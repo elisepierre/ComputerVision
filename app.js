@@ -9,6 +9,12 @@ const targetWordEl = document.getElementById("target-word");
 const scoreEl = document.getElementById("score");
 const statusBar = document.getElementById("status-bar");
 
+const settingsModal = document.getElementById("settings-modal");
+const openSettingsBtn = document.getElementById("open-settings");
+const closeSettingsBtn = document.getElementById("close-settings");
+const saveSettingsBtn = document.getElementById("save-settings");
+const apiKeyInput = document.getElementById("api-key-input");
+
 let handLandmarker;
 let score = 0;
 let canValidate = true;
@@ -185,4 +191,66 @@ document.getElementById("enableWebcamButton").onclick = async () => {
     } catch (err) {
         alert("Erreur webcam : " + err.message);
     }
+};
+
+openSettingsBtn.onclick = () => {
+    const savedKey = localStorage.getItem("GEMINI_API_KEY");
+    if (savedKey) apiKeyInput.value = savedKey;
+    settingsModal.style.display = "flex";
+};
+
+// Fermer la modale
+closeSettingsBtn.onclick = () => settingsModal.style.display = "none";
+
+// Sauvegarder la clé localement
+saveSettingsBtn.onclick = () => {
+    const key = apiKeyInput.value.trim();
+    if (key) {
+        localStorage.setItem("GEMINI_API_KEY", key);
+        alert("Clé API sauvegardée localement ! ✅");
+        settingsModal.style.display = "none";
+        location.reload(); // Recharge pour initialiser Gemini avec la nouvelle clé
+    }
+};
+
+// --- INITIALISATION GEMINI PRIVÉE ---
+const savedApiKey = localStorage.getItem("GEMINI_API_KEY");
+let genAI = null;
+let aiModel = null;
+
+if (savedApiKey) {
+    genAI = new GoogleGenerativeAI(savedApiKey);
+    aiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+}
+
+// --- LOGIQUE DU BOUTON AIDE (?) ---
+document.getElementById("help-btn").onclick = async () => {
+    if (!aiModel) {
+        alert("Clique d'abord sur l'engrenage ⚙️ pour configurer ta clé API Gemini !");
+        return;
+    }
+
+    const currentLetter = targetWordEl.innerText;
+    statusBar.innerText = "L'IA réfléchit... 🧠";
+
+    const prompt = `Explique en une seule phrase simple comment faire la lettre '${currentLetter}' en alphabet de langue des signes (ASL). Sois précis sur la position des doigts.`;
+
+    try {
+        const result = await aiModel.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
+        // Affichage dans la modale d'aide
+        document.getElementById("help-text").innerText = text;
+        document.getElementById("help-modal").style.display = "flex";
+        statusBar.innerText = "Conseil de l'IA reçu ! ✨";
+    } catch (error) {
+        console.error(error);
+        statusBar.innerText = "Erreur Gemini : Vérifie ta clé API.";
+    }
+};
+
+// Fermer la modale d'aide
+document.querySelector(".close-help").onclick = () => {
+    document.getElementById("help-modal").style.display = "none";
 };
