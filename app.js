@@ -93,18 +93,25 @@ helpBtn.onclick = async () => {
     helpText.innerText = "Le prof Gemini réfléchit... 🧠";
     helpModal.style.display = "flex";
 
-    const prompt = `En une seule phrase courte et simple, explique comment positionner les doigts pour faire la lettre '${currentLetter}' en alphabet de langue des signes (ASL).`;
+    // On force Gemini à être un prof de langue des signes
+    const prompt = `Tu es un expert en langue des signes. En une seule phrase courte, explique comment placer les doigts pour la lettre '${currentLetter}' en ASL.`;
 
     try {
+        // Ajoute "generateContent" avec une gestion d'erreur plus précise
         const result = await aiModel.generateContent(prompt);
-        const response = await result.response;
-        helpText.innerText = response.text();
+        const text = result.response.text(); // Pas besoin de await sur .text() ici d'habitude
+        
+        if (text) {
+            helpText.innerText = text;
+        } else {
+            helpText.innerText = "Gemini n'a pas pu générer de réponse.";
+        }
     } catch (error) {
-        console.error("Erreur Gemini:", error);
-        helpText.innerText = "Désolé, l'IA ne répond pas. Vérifie ta clé.";
+        console.error("Détail de l'erreur Gemini:", error);
+        // Regarde si l'erreur parle de "Safety" ou de "429"
+        helpText.innerText = "Erreur: " + (error.message.includes("429") ? "Trop de requêtes, attends 1 min." : "Vérifie ta clé ou ta connexion.");
     }
 };
-
 const closeHelpBtn = document.querySelector(".close-help");
 if (closeHelpBtn) {
     closeHelpBtn.onclick = () => { helpModal.style.display = "none"; };
