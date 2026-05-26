@@ -8,6 +8,13 @@ const canvasCtx = canvasElement.getContext("2d");
 const targetWordEl = document.getElementById("target-word");
 const scoreEl = document.getElementById("score");
 const statusBar = document.getElementById("status-bar");
+const settingsBtn = document.getElementById("open-settings");
+const settingsModal = document.getElementById("settings-modal");
+const saveSettingsBtn = document.getElementById("save-settings");
+const apiKeyInput = document.getElementById("api-key-input");
+const helpBtn = document.getElementById("help-btn");
+const helpModal = document.getElementById("help-modal");
+const helpText = document.getElementById("help-text");
 
 let handLandmarker;
 let score = 0;
@@ -15,9 +22,9 @@ let canValidate = true;
 let myReferenceDataset = {};
 
 // --- 1. CONFIGURATION GEMINI ---
-let API_KEY = localStorage.getItem("GEMINI_STUDENT_KEY");
-let genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-let aiModel = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" }) : null;
+let API_KEY = localStorage.getItem("GEMINI_API_KEY");
+let genAI = null;
+let aiModel = null;
 
 // --- 2. CHARGEMENT DU DATASET ---
 async function loadReferences() {
@@ -39,6 +46,64 @@ async function loadReferences() {
         console.error(err);
     }
 }
+
+function setupAI() {
+    API_KEY = localStorage.getItem("GEMINI_API_KEY");
+    if (API_KEY) {
+        genAI = new GoogleGenerativeAI(API_KEY);
+        // Utilisation de 2.0 Flash pour la rapidité
+        aiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        console.log("🤖 Gemini IA prête !");
+    }
+}
+setupAI();
+
+settingsBtn.onclick = () => {
+    settingsModal.style.display = "flex";
+    if (API_KEY) apiKeyInput.value = API_KEY;
+};
+
+saveSettingsBtn.onclick = () => {
+    const key = apiKeyInput.value.trim();
+    if (key) {
+        localStorage.setItem("GEMINI_API_KEY", key);
+        setupAI(); // On réinitialise avec la nouvelle clé
+        settingsModal.style.display = "none";
+        statusBar.innerText = "✅ Clé API enregistrée !";
+    }
+};
+
+document.getElementById("close-settings").onclick = () => {
+    settingsModal.style.display = "none";
+};
+
+helpBtn.onclick = async () => {
+    if (!aiModel) {
+        statusBar.innerText = "❌ Configure ta clé API d'abord ! (⚙️)";
+        settingsModal.style.display = "flex";
+        return;
+    }
+
+    const currentLetter = targetWordEl.innerText;
+    helpText.innerText = "Le prof Gemini réfléchit... 🧠";
+    helpModal.style.display = "flex";
+
+    const prompt = `En une seule phrase courte et simple, explique comment positionner les doigts pour faire la lettre '${currentLetter}' en alphabet de langue des signes (ASL).`;
+
+    try {
+        const result = await aiModel.generateContent(prompt);
+        const response = await result.response;
+        helpText.innerText = response.text();
+    } catch (error) {
+        console.error("Erreur Gemini:", error);
+        helpText.innerText = "Désolé, je n'ai pas pu obtenir d'aide. Vérifie ta clé API ou ta connexion.";
+    }
+};
+
+// Fermer la modale d'aide
+document.querySelector(".close-help").onclick = () => {
+    helpModal.style.display = "none";
+};
 
 // --- 3. MATHS : DISTANCE EUCLIDIENNE ---
 function calculateDistance(hand1, hand2) {
@@ -186,3 +251,5 @@ document.getElementById("enableWebcamButton").onclick = async () => {
         alert("Erreur webcam : " + err.message);
     }
 };
+    
+
