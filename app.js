@@ -45,23 +45,28 @@ setupAI();
 // --- 2. CHARGEMENT DU DATASET ---
 async function loadReferences() {
     try {
-        // Exemple de logique pour charger le bon JSON selon la page
-        const url = window.location.href; // On prend l'URL entière
-        let jsonToLoad = "alphabet_signs.json"; // Valeur par défaut
+        const url = window.location.href;
+        let jsonToLoad = "alphabet_signs.json"; // Le fichier par défaut
 
-        // On vérifie si le mot clé est présent dans l'URL
-        if (url.indexOf("meetings.html") !== -1) {
+        // Détection stricte basée sur l'URL
+        if (url.includes("meetings.html")) {
             jsonToLoad = "greetings_signs.json";
-        } else if (url.indexOf("ordering.html") !== -1) {
+        } else if (url.includes("ordering.html")) {
             jsonToLoad = "ordering_signs.json";
         }
 
-        console.log("Loading file:", jsonToLoad); // Pour vérifier dans la console
+        console.log("File selected:", jsonToLoad);
 
         const response = await fetch(jsonToLoad);
         
+        if (!response.ok) {
+            throw new Error(`Failed to load ${jsonToLoad} (Status: ${response.status})`);
+        }
+
+        myReferenceDataset = await response.json();
         const signs = Object.keys(myReferenceDataset);
-        console.log("Dataset ready with", signs.length, "signs.");
+        
+        console.log("Dataset loaded with", signs.length, "signs.");
 
         if (signs.length > 0 && targetWordEl) {
             const firstSign = signs[Math.floor(Math.random() * signs.length)];
@@ -69,11 +74,10 @@ async function loadReferences() {
             statusBar.innerText = "Ready! Perform the sign: " + firstSign;
         }
     } catch (err) {
-        statusBar.innerText = "Error loading JSON dataset";
-        console.error(err);
+        statusBar.innerText = "JSON Error: Check console";
+        console.error("CRITICAL ERROR:", err);
     }
 }
-
 // --- 3. ÉVÉNEMENTS (MODALES & BOUTONS) ---
 settingsBtn.onclick = () => {
     settingsModal.style.display = "flex";
