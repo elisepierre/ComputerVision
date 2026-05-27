@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL Future Academy - Extractor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo">ASL <span class="highlight">Future</span></div>
+            <div class="header-right">
+                <button id="open-settings" class="icon-btn">⚙️</button>
+                <div class="score-pill">Score <span id="score">0</span></div>
+            </div>
+        </header>
+
+        <main>
+            <div class="video-frame">
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="output_canvas"></canvas>
+                <div id="feedback-pop" class="success-toast">NICE! ✨</div>
+            </div>
+
+            <div class="learning-panel">
+                <div class="card current-target">
+                    <div class="target-header">
+                        <p class="label">Current Challenge</p>
+                        <button id="help-btn" class="help-circle">?</button>
+                    </div>
+                    <h2 id="target-word">GOODBYE</h2>
+                </div>
+
+                <div class="card hint-card">
+                    <p>💡 <span class="hint-title">Extractor Mode:</span> Use the button below to scan your <b>/dataset</b> folder.</p>
+                </div>
+
+                <!-- BOUTONS D'ACTION -->
+                <button id="enableWebcamButton" class="main-cta">Start Webcam</button>
+                <button id="batch-process" class="main-cta" style="background: #2ecc71; margin-top: 10px;">Batch Process Photos 📸</button>
+                
+                <input type="file" id="image-upload" accept="image/*" multiple style="display:none;">
+                <p id="status-bar" class="status-text">Ready to process...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALES -->
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>AI Configuration</h3>
+            <input type="password" id="api-key-input" placeholder="Gemini API Key">
+            <div class="modal-buttons">
+                <button id="save-settings" class="btn-save">Save</button>
+                <button id="close-settings" class="btn-cancel">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="help-modal" class="modal-overlay">
+        <div class="modal-content help-border">
+            <span class="close-help">&times;</span>
+            <p id="help-text">AI Advice...</p>
+        </div>
+    </div>
+
+    <script type="importmap">
+    { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai" } }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs" type="module"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
