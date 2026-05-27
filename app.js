@@ -45,7 +45,17 @@ setupAI();
 // --- 2. CHARGEMENT DU DATASET ---
 async function loadReferences() {
     try {
-        const response = await fetch('reference_signs.json');
+    // Exemple de logique pour charger le bon JSON selon la page
+        let jsonToLoad = "alphabet_signs.json"; // par défaut
+        
+        if (window.location.pathname.includes("meetings")) {
+            jsonToLoad = "greetings_signs.json";
+        } else if (window.location.pathname.includes("ordering")) {
+            jsonToLoad = "ordering_signs.json";
+        }
+        
+        // Et dans ta fonction loadReferences :
+        const response = await fetch(jsonToLoad);
         myReferenceDataset = await response.json();
         
         const signs = Object.keys(myReferenceDataset);
