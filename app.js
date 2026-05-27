@@ -33,9 +33,9 @@ function setupAI() {
             genAI = new GoogleGenerativeAI(API_KEY);
             // Utilise "gemini-2.5-flash" (la plus rapide et performante pour ton projet)
             aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-            console.log("🤖 Gemini 2.5 Flash est prêt !");
+            console.log("Gemini 2.5 Flash is ready!");
         } catch (e) {
-            console.error("Erreur setup AI:", e);
+            console.error("AI Setup Error:", e);
         }
     }
 }
@@ -49,15 +49,15 @@ async function loadReferences() {
         myReferenceDataset = await response.json();
         
         const signs = Object.keys(myReferenceDataset);
-        console.log("Dataset prêt avec", signs.length, "signes.");
+        console.log("Dataset ready with", signs.length, "signs.");
 
         if (signs.length > 0 && targetWordEl) {
             const firstSign = signs[Math.floor(Math.random() * signs.length)];
             targetWordEl.innerText = firstSign;
-            statusBar.innerText = "✅ Prêt ! Fais le signe : " + firstSign;
+            statusBar.innerText = "Ready! Perform the sign: " + firstSign;
         }
     } catch (err) {
-        statusBar.innerText = "❌ Erreur de chargement du dataset JSON";
+        statusBar.innerText = "Error loading JSON dataset";
         console.error(err);
     }
 }
@@ -74,7 +74,7 @@ saveSettingsBtn.onclick = () => {
         localStorage.setItem("GEMINI_API_KEY", key);
         setupAI(); 
         settingsModal.style.display = "none";
-        statusBar.innerText = "✅ Clé API enregistrée !";
+        statusBar.innerText = "API Key saved!";
     }
 };
 
@@ -84,17 +84,17 @@ document.getElementById("close-settings").onclick = () => {
 
 helpBtn.onclick = async () => {
     if (!aiModel) {
-        statusBar.innerText = "❌ Configure ta clé API d'abord ! (⚙️)";
+        statusBar.innerText = "Configure your API Key first! (⚙️)";
         settingsModal.style.display = "flex";
         return;
     }
 
     const currentLetter = targetWordEl.innerText;
-    helpText.innerText = "Le prof Gemini réfléchit... 🧠";
+    helpText.innerText = "Professor Gemini is thinking...";
     helpModal.style.display = "flex";
 
     // On force Gemini à être un prof de langue des signes
-    const prompt = `Tu es un expert en langue des signes. En une seule phrase courte, explique comment placer les doigts pour la lettre '${currentLetter}' en ASL.`;
+    const prompt = `You are a sign language expert. In one short sentence, explain how to position the fingers for the letter '${currentLetter}' in ASL.`;
 
     try {
         // Ajoute "generateContent" avec une gestion d'erreur plus précise
@@ -104,12 +104,12 @@ helpBtn.onclick = async () => {
         if (text) {
             helpText.innerText = text;
         } else {
-            helpText.innerText = "Gemini n'a pas pu générer de réponse.";
+            helpText.innerText = "Gemini could not generate a response.";
         }
     } catch (error) {
-        console.error("Détail de l'erreur Gemini:", error);
+        console.error("Gemini Error Detail:", error);
         // Regarde si l'erreur parle de "Safety" ou de "429"
-        helpText.innerText = "Erreur: " + (error.message.includes("429") ? "Trop de requêtes, attends 1 min." : "Vérifie ta clé ou ta connexion.");
+        helpText.innerText = "Error: " + (error.message.includes("429") ? "Too many requests, wait 1 min." : "Check your key or connection.");
     }
 };
 const closeHelpBtn = document.querySelector(".close-help");
