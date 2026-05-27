@@ -45,18 +45,20 @@ setupAI();
 // --- 2. CHARGEMENT DU DATASET ---
 async function loadReferences() {
     try {
-    // Exemple de logique pour charger le bon JSON selon la page
-        let jsonToLoad = "alphabet_signs.json"; // par défaut
-        
-        if (window.location.pathname.includes("meetings")) {
+        // Exemple de logique pour charger le bon JSON selon la page
+        const url = window.location.href; // On prend l'URL entière
+        let jsonToLoad = "alphabet_signs.json"; // Valeur par défaut
+
+        // On vérifie si le mot clé est présent dans l'URL
+        if (url.indexOf("meetings.html") !== -1) {
             jsonToLoad = "greetings_signs.json";
-        } else if (window.location.pathname.includes("ordering")) {
+        } else if (url.indexOf("ordering.html") !== -1) {
             jsonToLoad = "ordering_signs.json";
         }
-        
-        // Et dans ta fonction loadReferences :
+
+        console.log("Loading file:", jsonToLoad); // Pour vérifier dans la console
+
         const response = await fetch(jsonToLoad);
-        myReferenceDataset = await response.json();
         
         const signs = Object.keys(myReferenceDataset);
         console.log("Dataset ready with", signs.length, "signs.");
