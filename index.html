@@ -3,73 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Future Academy - Extractor</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <title>ASL Future Academy - Welcome</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .menu-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 30px;
+            border-radius: 20px;
+            width: 250px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        }
+
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .card h2 {
+            margin: 10px 0;
+            font-size: 1.5rem;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <header>
-            <div class="logo">ASL <span class="highlight">Future</span></div>
-            <div class="header-right">
-                <button id="open-settings" class="icon-btn">⚙️</button>
-                <div class="score-pill">Score <span id="score">0</span></div>
-            </div>
-        </header>
 
-        <main>
-            <div class="video-frame">
-                <video id="webcam" autoplay playsinline></video>
-                <canvas id="output_canvas"></canvas>
-                <div id="feedback-pop" class="success-toast">NICE! ✨</div>
-            </div>
+    <h1>ASL Future Academy</h1>
+    <p>Select your learning path</p>
 
-            <div class="learning-panel">
-                <div class="card current-target">
-                    <div class="target-header">
-                        <p class="label">Current Challenge</p>
-                        <button id="help-btn" class="help-circle">?</button>
-                    </div>
-                    <h2 id="target-word">GOODBYE</h2>
-                </div>
+    <div class="menu-container">
+        <!-- Alphabet Module -->
+        <a href="alphabet.html" class="card">
+            <div class="icon">🔤</div>
+            <h2>Alphabet</h2>
+            <p>Master the A-Z signs</p>
+        </a>
 
-                <div class="card hint-card">
-                    <p>💡 <span class="hint-title">Extractor Mode:</span> Use the button below to scan your <b>/dataset</b> folder.</p>
-                </div>
+        <!-- Greetings Module -->
+        <a href="greetings.html" class="card">
+            <div class="icon">🤝</div>
+            <h2>Meetings</h2>
+            <p>Basic social interactions</p>
+        </a>
 
-                <!-- BOUTONS D'ACTION -->
-                <button id="enableWebcamButton" class="main-cta">Start Webcam</button>
-                <button id="batch-process" class="main-cta" style="background: #2ecc71; margin-top: 10px;">Batch Process Photos 📸</button>
-                
-                <input type="file" id="image-upload" accept="image/*" multiple style="display:none;">
-                <p id="status-bar" class="status-text">Ready to process...</p>
-            </div>
-        </main>
+        <!-- Restaurant Module -->
+        <a href="order.html" class="card">
+            <div class="icon">🍱</div>
+            <h2>Ordering</h2>
+            <p>Food, drinks & prices</p>
+        </a>
     </div>
 
-    <!-- MODALES -->
-    <div id="settings-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h3>AI Configuration</h3>
-            <input type="password" id="api-key-input" placeholder="Gemini API Key">
-            <div class="modal-buttons">
-                <button id="save-settings" class="btn-save">Save</button>
-                <button id="close-settings" class="btn-cancel">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="help-modal" class="modal-overlay">
-        <div class="modal-content help-border">
-            <span class="close-help">&times;</span>
-            <p id="help-text">AI Advice...</p>
-        </div>
-    </div>
-
-    <script type="importmap">
-    { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai" } }
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs" type="module"></script>
-    <script type="module" src="app.js"></script>
 </body>
 </html>
