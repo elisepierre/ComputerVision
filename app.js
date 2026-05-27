@@ -182,15 +182,15 @@ async function predict() {
 
             if (reference && canValidate) {
                 const diff = calculateDistance(currentHand, reference);
-                console.log(`Distance pour ${target}: ${diff.toFixed(2)}`);
+                console.log(`Distance for ${target}: ${diff.toFixed(2)}`);
 
                 if (diff < 3.5) {
-                    statusBar.innerText = "✨ PARFAIT !";
+                    statusBar.innerText = "PERFECT!";
                     handleSuccess();
                 } else if (diff < 5.5) {
-                    statusBar.innerText = "⚡ Tu y es presque...";
+                    statusBar.innerText = "You're almost there...";
                 } else {
-                    statusBar.innerText = "Fais le signe : " + target;
+                    statusBar.innerText = "Perform the sign:" + target;
                 }
             }
         }
@@ -203,7 +203,7 @@ function handleSuccess() {
     score++;
     scoreEl.innerText = score;
     const feedback = document.getElementById("feedback-pop");
-    feedback.innerText = "BIEN ! ✨";
+    feedback.innerText = "NICE!";
     feedback.style.display = "block";
     
     setTimeout(() => {
@@ -221,11 +221,11 @@ document.getElementById("enableWebcamButton").onclick = async () => {
         video.onloadedmetadata = () => {
             video.play();
             predict();
-            document.getElementById("enableWebcamButton").innerText = "Webcam Active ✅";
+            document.getElementById("enableWebcamButton").innerText = "Webcam Active";
             document.getElementById("enableWebcamButton").disabled = true;
         };
     } catch (err) {
-        alert("Erreur webcam : " + err.message);
+        alert("Webcam Error:" + err.message);
     }
 };
 
