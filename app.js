@@ -46,36 +46,41 @@ setupAI();
 async function loadReferences() {
     try {
         const url = window.location.href;
-        let jsonToLoad = "alphabet_signs.json"; // Le fichier par défaut
+        let jsonToLoad = "alphabet_signs.json"; // Default file
 
-        // Détection stricte basée sur l'URL
+        // Logic to select the correct JSON based on the URL
         if (url.includes("meetings.html")) {
             jsonToLoad = "greetings_signs.json";
         } else if (url.includes("ordering.html")) {
             jsonToLoad = "ordering_signs.json";
         }
 
-        console.log("File selected:", jsonToLoad);
+        console.log("📍 Attempting to fetch:", jsonToLoad);
 
         const response = await fetch(jsonToLoad);
         
         if (!response.ok) {
-            throw new Error(`Failed to load ${jsonToLoad} (Status: ${response.status})`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        myReferenceDataset = await response.json();
-        const signs = Object.keys(myReferenceDataset);
+        const data = await response.json();
+        myReferenceDataset = data;
         
-        console.log("Dataset loaded with", signs.length, "signs.");
+        // Extracting keys (signs) from the object
+        const signs = Object.keys(myReferenceDataset);
+        console.log("🔍 Signs found in dataset:", signs);
 
         if (signs.length > 0 && targetWordEl) {
             const firstSign = signs[Math.floor(Math.random() * signs.length)];
             targetWordEl.innerText = firstSign;
-            statusBar.innerText = "Ready! Perform the sign: " + firstSign;
+            statusBar.innerText = "✅ Ready! Perform the sign: " + firstSign;
+        } else {
+            console.error("The JSON is empty or incorrectly formatted.");
+            statusBar.innerText = "❌ Empty dataset (0 signs found)";
         }
     } catch (err) {
-        statusBar.innerText = "JSON Error: Check console";
-        console.error("CRITICAL ERROR:", err);
+        console.error("Loading error:", err);
+        statusBar.innerText = "❌ Error loading signs. Check console.";
     }
 }
 // --- 3. ÉVÉNEMENTS (MODALES & BOUTONS) ---
