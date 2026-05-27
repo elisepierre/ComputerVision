@@ -3,108 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASL Future Academy - Welcome</title>
+    <title>ASL Future Academy - Home</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600;800&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+        /* Réutilisation de tes variables de base */
+        :root {
+            --main-blue: #162447;
+            --electric-violet: #8a2be2;
+            --accent-cyan: #00e5ff;
+            --bg-beige: #fdfaf5;
+            --text-dark: #1b1b2f;
+            --white: #ffffff;
+        }
 
         body {
             margin: 0;
-            padding: 0;
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
+            background-color: var(--main-blue);
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            color: white;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 95%;
+            max-width: 1050px;
+            background: var(--bg-beige);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.4);
             text-align: center;
         }
 
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        .logo { font-size: 2.5rem; font-weight: 800; color: var(--main-blue); margin-bottom: 10px; }
+        .logo .highlight { color: var(--electric-violet); }
+        
+        .subtitle { color: var(--text-dark); opacity: 0.7; margin-bottom: 40px; font-size: 1.1rem; }
+
+        /* Grille des modules */
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
         }
 
-        p {
-            font-size: 1.2rem;
-            margin-bottom: 40px;
-            opacity: 0.9;
-        }
-
-        .menu-container {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 30px;
+        .module-card {
+            background: var(--white);
             border-radius: 20px;
-            width: 250px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            overflow: hidden;
             text-decoration: none;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            color: var(--text-dark);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
         }
 
-        .card:hover {
+        .module-card:hover {
             transform: translateY(-10px);
-            background: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            border-color: var(--electric-violet);
+            box-shadow: 0 15px 30px rgba(138, 43, 226, 0.2);
         }
 
-        .icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
+        .image-container {
+            width: 100%;
+            height: 180px;
+            overflow: hidden;
+            background: #eee;
         }
 
-        .card h2 {
-            margin: 10px 0;
-            font-size: 1.5rem;
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
         }
 
-        .card p {
-            font-size: 0.9rem;
-            margin-bottom: 0;
-        }
+        .module-card:hover img { transform: scale(1.1); }
+
+        .card-content { padding: 20px; }
+        .card-content h2 { margin: 0 0 10px 0; font-size: 1.4rem; color: var(--main-blue); }
+        .card-content p { margin: 0; font-size: 0.9rem; opacity: 0.8; line-height: 1.4; }
+
+        @media (max-width: 600px) { .modules-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
-    <h1>ASL Future Academy</h1>
-    <p>Select your learning path</p>
+    <div class="app-container">
+        <div class="logo">ASL <span class="highlight">Future</span> Academy</div>
+        <p class="subtitle">Select a module to start practicing with AI</p>
 
-    <div class="menu-container">
-        <!-- Alphabet Module -->
-        <a href="alphabet.html" class="card">
-            <div class="icon">🔤</div>
-            <h2>Alphabet</h2>
-            <p>Master the A-Z signs</p>
-        </a>
+        <div class="modules-grid">
+            <a href="alphabet.html" class="card">
+                <div class="module-card">
+                    <div class="image-container">
+                        <img src="https://images.unsplash.com/photo-1531746790731-6c087fecd05a?q=80&w=1000&auto=format&fit=crop" alt="Alphabet signs">
+                    </div>
+                    <div class="card-content">
+                        <h2>Alphabet</h2>
+                        <p>Learn the foundations: Master A-Z finger-spelling with real-time feedback.</p>
+                    </div>
+                </div>
+            </a>
 
-        <!-- Greetings Module -->
-        <a href="greetings.html" class="card">
-            <div class="icon">🤝</div>
-            <h2>Meetings</h2>
-            <p>Basic social interactions</p>
-        </a>
+            <a href="meetings.html" class="card">
+                <div class="module-card">
+                    <div class="image-container">
+                        <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=1000&auto=format&fit=crop" alt="People meeting">
+                    </div>
+                    <div class="card-content">
+                        <h2>Meetings</h2>
+                        <p>Essential interactions: Greetings, introductions, and social basics.</p>
+                    </div>
+                </div>
+            </a>
 
-        <!-- Restaurant Module -->
-        <a href="order.html" class="card">
-            <div class="icon">🍱</div>
-            <h2>Ordering</h2>
-            <p>Food, drinks & prices</p>
-        </a>
+            <a href="ordering.html" class="card">
+                <div class="module-card">
+                    <div class="image-container">
+                        <img src="https://images.unsplash.com/photo-1552566626-52f8b828add9?q=80&w=1000&auto=format&fit=crop" alt="Restaurant ordering">
+                    </div>
+                    <div class="card-content">
+                        <h2>Ordering</h2>
+                        <p>Daily life: Ordering food and drinks in restaurants and local shops.</p>
+                    </div>
+                </div>
+            </a>
+        </div>
     </div>
 
 </body>
