@@ -206,10 +206,10 @@ function drawStyledHand(landmarks) {
 // --- 5. PRÉDICTION & WEBCAM ---
 async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
-        if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
-            canvasElement.width = video.videoWidth;
-            canvasElement.height = video.videoHeight;
-        }
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
+        canvasElement.style.width = video.clientWidth + "px";
+        canvasElement.style.height = video.clientHeight + "px";
 
         const results = await handLandmarker.detectForVideo(video, performance.now(), {
             width: video.videoWidth,
@@ -309,30 +309,22 @@ function handleSuccess() {
 }
 
 document.getElementById("enableWebcamButton").onclick = async () => {
-    if (!handLandmarker) {
-        statusBar.innerText = "⏳ IA en cours de chargement... Patiente.";
-        return;
-    }
-
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: 640, height: 480 } // On force une résolution standard
+            video: { facingMode: "user" } // On laisse le navigateur choisir la meilleure résolution
         });
         video.srcObject = stream;
         
         video.onloadedmetadata = () => {
             video.play();
-            // Sécurité cruciale : on attend que la vidéo tourne vraiment
             video.addEventListener('playing', () => {
-                console.log("🎥 Vidéo en lecture, lancement de predict...");
-                predict(); // On ne lance predict qu'ICI
+                predict();
                 document.getElementById("enableWebcamButton").innerText = "Webcam Active ✅";
                 document.getElementById("enableWebcamButton").disabled = true;
             }, { once: true });
         };
     } catch (err) {
-        console.error("Webcam Error:", err);
-        statusBar.innerText = "❌ Caméra bloquée ou non trouvée.";
+        statusBar.innerText = "❌ Caméra bloquée.";
     }
 };
 
