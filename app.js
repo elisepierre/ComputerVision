@@ -141,11 +141,20 @@ if (closeHelpBtn) {
 // --- 4. MATHS & DESSIN ---
 function calculateDistance(hand1, hand2) {
     let totalDist = 0;
+
+    // 1. Calculer la taille de chaque main pour normaliser (Distance Poignet-Majeur)
+    const size1 = Math.hypot(hand1[9].x - hand1[0].x, hand1[9].y - hand1[0].y);
+    const size2 = Math.hypot(hand2[9].x - hand2[0].x, hand2[9].y - hand2[0].y);
+
     for (let i = 0; i < 21; i++) {
-        const dx1 = hand1[i].x - hand1[0].x;
-        const dy1 = hand1[i].y - hand1[0].y;
-        const dx2 = hand2[i].x - hand2[0].x;
-        const dy2 = hand2[i].y - hand2[0].y;
+        // 2. Coordonnées relatives au poignet
+        const dx1 = (hand1[i].x - hand1[0].x) / size1;
+        const dy1 = (hand1[i].y - hand1[0].y) / size1;
+        
+        const dx2 = (hand2[i].x - hand2[0].x) / size2;
+        const dy2 = (hand2[i].y - hand2[0].y) / size2;
+
+        // 3. Somme des distances euclidiennes normalisées
         totalDist += Math.hypot(dx1 - dx2, dy1 - dy2);
     }
     return totalDist;
