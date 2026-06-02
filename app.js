@@ -29,6 +29,7 @@ let aiModel = null;
 
 // Configuration des difficultés personnalisées par signe
 const SIGN_THRESHOLDS = {
+    "H": 9.0,
     "DEFAULT": 9 // Seuil par défaut pour les autres
 };
 
