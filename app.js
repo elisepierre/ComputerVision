@@ -316,6 +316,7 @@ batchProcessBtn.onclick = () => {
 };
 
 // Quand les fichiers sont sélectionnés
+// Quand les fichiers sont sélectionnés dans l'extracteur
 imageUploadInput.onchange = async (event) => {
     const files = event.target.files;
     if (files.length === 0) return;
@@ -323,23 +324,22 @@ imageUploadInput.onchange = async (event) => {
     statusBar.innerText = "⏳ Processing images... Please wait.";
     
     for (const file of files) {
-        // On récupère le nom du fichier pour savoir quelle lettre c'est
-        // Exemple: "A_1.jpg" -> "A"
         const label = file.name.split('_')[0].toUpperCase();
         
         try {
             const landmarks = await extractLandmarksFromImageFile(file);
             if (landmarks) {
-                // LOGIQUE MULTI-SIGNES : On ajoute sans écraser
+                // Si la lettre n'existe pas, on initialise un tableau vide
                 if (!myReferenceDataset[label]) {
                     myReferenceDataset[label] = [];
                 }
                 
-                // Si c'était un vieil objet (ancien format), on le transforme en tableau
+                // Si c'était un ancien format objet, on le convertit proprement en tableau
                 if (!Array.isArray(myReferenceDataset[label])) {
                     myReferenceDataset[label] = [myReferenceDataset[label]];
                 }
 
+                // On pousse la nouvelle photo (tableau de 21 points) dans la liste de cette lettre
                 myReferenceDataset[label].push(landmarks);
                 console.log(`✅ Added variant for ${label}.`);
             }
@@ -349,7 +349,7 @@ imageUploadInput.onchange = async (event) => {
     }
 
     statusBar.innerText = "✅ Done! Downloading your new JSON...";
-    downloadNewJSON(myReferenceDataset);
+    downloadNewJSON(myReferenceDataset); // Appelle la fonction de téléchargement propre
 };
 
 // Fonction pour extraire les points d'une image uploadée
@@ -386,8 +386,9 @@ async function extractLandmarksFromImageFile(file) {
 
 // Fonction pour télécharger le fichier JSON mis à jour
 // Fonction pour télécharger le fichier JSON avec un formatage clair (Pretty Print)
+// Fonction pour télécharger le fichier JSON parfaitement formaté (Pretty Print)
 function downloadNewJSON(data) {
-    // Le paramètre 'null, 2' permet d'ajouter des retours à la ligne et 2 espaces d'indentation
+    // Le paramètre 'null, 2' force JavaScript à mettre chaque élément à la ligne avec une indentation propre
     const jsonString = JSON.stringify(data, null, 2);
     
     const blob = new Blob([jsonString], { type: "application/json" });
@@ -400,13 +401,12 @@ function downloadNewJSON(data) {
     
     downloadAnchorNode.click();
     
-    // Nettoyage
+    // Nettoyage de la mémoire du navigateur
     downloadAnchorNode.remove();
     URL.revokeObjectURL(url);
     
     console.log("📁 JSON formatted and downloaded successfully.");
 }
-
 // --- 6. LANCEMENT ---
 async function init() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
