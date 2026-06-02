@@ -33,7 +33,10 @@ const SIGN_THRESHOLDS = {
     "B": 2.5,      // Plus souple
     "C": 3.5,      // Trajectoire
     "D": 2.5,      // Trajectoire
+    "E": 3,      // Trajectoire
+    "F": 2.5,      // Trajectoire
     "G": 8,      // Trajectoire
+    "H": 2.5,      // Trajectoire
     "DEFAULT": 2 // Seuil par défaut pour les autres
 };
 
@@ -183,19 +186,34 @@ const HAND_CONNECTIONS = [
 ];
 
 function drawStyledHand(landmarks) {
+    // On récupère la taille RÉELLE que la vidéo prend à l'écran
+    const displayWidth = video.clientWidth;
+    const displayHeight = video.clientHeight;
+
+    // On force le canvas à avoir EXACTEMENT cette taille de pixels
+    if (canvasElement.width !== displayWidth || canvasElement.height !== displayHeight) {
+        canvasElement.width = displayWidth;
+        canvasElement.height = displayHeight;
+    }
+
     const w = canvasElement.width;
     const h = canvasElement.height;
+
     canvasCtx.strokeStyle = "#8a2be2";
     canvasCtx.lineWidth = 4;
     canvasCtx.lineCap = "round";
 
+    // Dessin des connections
     HAND_CONNECTIONS.forEach(([start, end]) => {
         canvasCtx.beginPath();
+        // Le secret est ici : MediaPipe donne des ratios (0 à 1), 
+        // on les multiplie par la largeur/hauteur affichée
         canvasCtx.moveTo(landmarks[start].x * w, landmarks[start].y * h);
         canvasCtx.lineTo(landmarks[end].x * w, landmarks[end].y * h);
         canvasCtx.stroke();
     });
 
+    // Dessin des points
     landmarks.forEach(p => {
         canvasCtx.beginPath();
         canvasCtx.arc(p.x * w, p.y * h, 5, 0, 2 * Math.PI);
