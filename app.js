@@ -195,6 +195,7 @@ function drawStyledHand(landmarks) {
 // --- 5. PRÉDICTION & WEBCAM ---
 async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
+        // Ajustement automatique du canvas
         if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
             canvasElement.width = video.videoWidth;
             canvasElement.height = video.videoHeight;
@@ -210,44 +211,52 @@ async function predict() {
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
             
-            // This part keeps the purple lines moving in real-time
+            // PRIORITÉ : On dessine d'abord pour éviter le freeze visuel
             drawStyledHand(currentHand);
 
-            const target = targetWordEl.innerText.toUpperCase();
-            const references = myReferenceDataset[target];
+            // LOGIQUE DE RECONNAISSANCE
+            try {
+                const target = targetWordEl.innerText.toUpperCase();
+                const references = myReferenceDataset[target];
 
-            if (references && canValidate) {
-                let minDiff = Infinity;
-                
-                // Convert to array if it's just one reference
-                const refList = Array.isArray(references[0]) ? references : [references];
+                if (references && canValidate) {
+                    let minDiff = Infinity;
+                    
+                    // On gère les deux formats : soit un seul signe, soit une liste de variantes
+                    // Ton JSON actuel est au format : "X": [{point0}, {point1}...]
+                    // On vérifie si references[0] est lui-même un tableau (cas multi-références)
+                    const isMulti = Array.isArray(references) && references[0] && Array.isArray(references[0]);
+                    const refList = isMulti ? references : [references];
 
-                refList.forEach(ref => {
-                    // Check both normal and mirrored versions
-                    const distNormal = calculateDistance(currentHand, ref);
-                    const mirroredRef = mirrorHand(ref);
-                    const distMirror = calculateDistance(currentHand, mirroredRef);
+                    refList.forEach(ref => {
+                        if (ref && ref.length === 21) {
+                            const distNormal = calculateDistance(currentHand, ref);
+                            const distMirror = calculateDistance(currentHand, mirrorHand(ref));
+                            minDiff = Math.min(minDiff, distNormal, distMirror);
+                        }
+                    });
 
-                    const bestForThisRef = Math.min(distNormal, distMirror);
-                    if (bestForThisRef < minDiff) minDiff = bestForThisRef;
-                });
-
-                console.log(`Best distance: ${minDiff.toFixed(2)}`);
-
-                if (minDiff < 4.2) { // Increased threshold slightly for normalized math
-                    statusBar.innerText = "PERFECT!";
-                    handleSuccess();
-                } else if (minDiff < 6.0) {
-                    statusBar.innerText = "You're almost there...";
-                } else {
-                    statusBar.innerText = "Perform the sign: " + target;
+                    if (minDiff !== Infinity) {
+                        console.log(`Distance: ${minDiff.toFixed(2)}`);
+                        if (minDiff < 4.2) {
+                            statusBar.innerText = "PERFECT!";
+                            handleSuccess();
+                        } else if (minDiff < 6.0) {
+                            statusBar.innerText = "You're almost there...";
+                        } else {
+                            statusBar.innerText = "Perform the sign: " + target;
+                        }
+                    }
                 }
+            } catch (calcError) {
+                // Si le calcul plante, on l'affiche mais on ne bloque pas la vidéo
+                console.error("Calculation error:", calcError);
             }
         }
     }
+    // Continue la boucle quoi qu'il arrive
     window.requestAnimationFrame(predict);
 }
-
 function handleSuccess() {
     canValidate = false;
     score++;
