@@ -385,14 +385,26 @@ async function extractLandmarksFromImageFile(file) {
 }
 
 // Fonction pour télécharger le fichier JSON mis à jour
+// Fonction pour télécharger le fichier JSON avec un formatage clair (Pretty Print)
 function downloadNewJSON(data) {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+    // Le paramètre 'null, 2' permet d'ajouter des retours à la ligne et 2 espaces d'indentation
+    const jsonString = JSON.stringify(data, null, 2);
+    
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
     const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("href", url);
     downloadAnchorNode.setAttribute("download", "alphabet_signs.json");
     document.body.appendChild(downloadAnchorNode);
+    
     downloadAnchorNode.click();
+    
+    // Nettoyage
     downloadAnchorNode.remove();
+    URL.revokeObjectURL(url);
+    
+    console.log("📁 JSON formatted and downloaded successfully.");
 }
 
 // --- 6. LANCEMENT ---
