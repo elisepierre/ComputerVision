@@ -50,7 +50,7 @@ async function loadReferences() {
 
         // Logic to select the correct JSON based on the URL
         if (url.includes("meetings.html")) {
-            jsonToLoad = "greetings_signs.json";
+            jsonToLoad = "meetings_signs.json";
         } else if (url.includes("ordering.html")) {
             jsonToLoad = "ordering_signs.json";
         }
