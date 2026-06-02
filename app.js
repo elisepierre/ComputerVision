@@ -29,17 +29,7 @@ let aiModel = null;
 
 // Configuration des difficultés personnalisées par signe
 const SIGN_THRESHOLDS = {
-    "A": 2,      // Plus strict
-    "B": 2.5,      // Plus souple
-    "C": 3.5,      // Trajectoire
-    "D": 2.5,      // Trajectoire
-    "E": 3,      // Trajectoire
-    "F": 2.5,      // Trajectoire
-    "G": 8,      // Trajectoire
-    "H": 2.5,      // Trajectoire
-    "J": 9,      // Trajectoire
-    "Z": 9,      // Trajectoire
-    "DEFAULT": 2 // Seuil par défaut pour les autres
+    "DEFAULT": 9 // Seuil par défaut pour les autres
 };
 
 function setupAI() {
