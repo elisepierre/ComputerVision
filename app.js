@@ -20,6 +20,7 @@ let handLandmarker;
 let score = 0;
 let canValidate = true;
 let myReferenceDataset = {};
+let currentStep = 0; // Pour suivre l'étape actuelle du mouvement (J et Z)
 
 // --- 1. CONFIGURATION GEMINI ---
 let API_KEY = localStorage.getItem("GEMINI_API_KEY");
@@ -195,86 +196,85 @@ function drawStyledHand(landmarks) {
 // --- 5. PRÉDICTION & WEBCAM ---
 async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
-        // 1. Ajustement automatique de la taille du dessin
         if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
             canvasElement.width = video.videoWidth;
             canvasElement.height = video.videoHeight;
         }
 
-        // 2. Détection des points de la main par MediaPipe
         const results = await handLandmarker.detectForVideo(video, performance.now(), {
             width: video.videoWidth,
             height: video.videoHeight
         });
 
-        // 3. On efface le canvas précédent
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
-            
-            // DESSIN : On dessine les points violets en premier pour la fluidité
             drawStyledHand(currentHand);
 
-            // LOGIQUE DE COMPARAISON
             try {
                 const target = targetWordEl.innerText.toUpperCase();
                 const references = myReferenceDataset[target];
 
                 if (references && canValidate) {
-                    let minDiff = Infinity;
-                    
-                    // Transformation en liste (pour gérer ton JSON actuel ou le futur multi-signes)
-                    const isMulti = Array.isArray(references) && references[0] && Array.isArray(references[0]);
-                    const refList = isMulti ? references : [references];
+                    // --- CAS J et Z (TRAJECTOIRE) ---
+                    if (target === "J" || target === "Z") {
+                        const targetStepRef = references[currentStep];
+                        if (targetStepRef) {
+                            const dNormal = calculateDistance(currentHand, targetStepRef);
+                            const dMirror = calculateDistance(currentHand, mirrorHand(targetStepRef));
+                            const bestDist = Math.min(dNormal, dMirror);
 
-                    refList.forEach(ref => {
-                        if (ref && ref.length === 21) {
-                            // TEST MAIN 1 : Comparaison normale
-                            const distNormal = calculateDistance(currentHand, ref);
-                            
-                            // TEST MAIN 2 : Comparaison avec le miroir (Main opposée)
-                            const distMirror = calculateDistance(currentHand, mirrorHand(ref));
-                            
-                            // On garde le meilleur score (le plus petit) des deux
-                            const bestMatchForThisRef = Math.min(distNormal, distMirror);
-                            
-                            if (bestMatchForThisRef < minDiff) {
-                                minDiff = bestMatchForThisRef;
+                            if (bestDist < 4.5) {
+                                currentStep++;
+                                statusBar.innerText = `Step ${currentStep}/${references.length} done! ⚡`;
+                                
+                                if (currentStep >= references.length) {
+                                    statusBar.innerText = "✨ PERFECT MOTION!";
+                                    currentStep = 0;
+                                    handleSuccess();
+                                }
                             }
                         }
-                    });
+                    } 
+                    // --- CAS STATIQUE (A, B, C...) ---
+                    else {
+                        let minDiff = Infinity;
+                        const refList = Array.isArray(references[0]) ? references : [references];
 
-                    // VALIDATION DES RÉSULTATS
-                    if (minDiff !== Infinity) {
-                        // On affiche la distance dans la barre de statut pour t'aider à régler
-                        console.log(`Best Distance: ${minDiff.toFixed(2)}`);
-                        
+                        refList.forEach(ref => {
+                            if (ref && ref.length === 21) {
+                                const dNormal = calculateDistance(currentHand, ref);
+                                const dMirror = calculateDistance(currentHand, mirrorHand(ref));
+                                minDiff = Math.min(minDiff, dNormal, dMirror);
+                            }
+                        });
+
                         if (minDiff < 4.2) {
-                            statusBar.innerText = "✨ PERFECT! (Distance: " + minDiff.toFixed(1) + ")";
+                            statusBar.innerText = "✨ PERFECT!";
                             handleSuccess();
                         } else if (minDiff < 6.0) {
-                            statusBar.innerText = "⚡ You're almost there... Keep trying!";
+                            statusBar.innerText = "⚡ Almost there...";
                         } else {
                             statusBar.innerText = "Perform the sign: " + target;
                         }
                     }
                 }
             } catch (calcError) {
-                console.error("Calculation error:", calcError);
+                console.error("Logic error:", calcError);
             }
         }
     }
-    // Relance la fonction pour l'image suivante (60 fois par seconde)
     window.requestAnimationFrame(predict);
 }
     
 function handleSuccess() {
     canValidate = false;
+    currentStep = 0; // Reset obligatoire pour J et Z
     score++;
     scoreEl.innerText = score;
     const feedback = document.getElementById("feedback-pop");
-    feedback.innerText = "NICE!";
+    feedback.innerText = "NICE! ✨";
     feedback.style.display = "block";
     
     setTimeout(() => {
@@ -354,13 +354,23 @@ imageUploadInput.onchange = async (event) => {
 
 // Fonction pour extraire les points d'une image uploadée
 async function extractLandmarksFromImageFile(file) {
-    return new Promise((resolve) => {
+    return new Promise(async (resolve) => {
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
+        const tempLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                delegate: "GPU"
+            },
+            runningMode: "IMAGE",
+            numHands: 1
+        });
+
         const reader = new FileReader();
         reader.onload = async (e) => {
             const img = new Image();
             img.onload = async () => {
-                // Utilisation de handLandmarker sur l'image
-                const result = handLandmarker.detect(img);
+                const result = tempLandmarker.detect(img);
+                tempLandmarker.close(); 
                 if (result.landmarks && result.landmarks.length > 0) {
                     resolve(result.landmarks[0]);
                 } else {
