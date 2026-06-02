@@ -227,55 +227,60 @@ async function predict() {
                 const references = myReferenceDataset[target];
 
                 if (references && canValidate) {
-                    // Chercher le seuil spécifique ou utiliser le défaut
                     const threshold = SIGN_THRESHOLDS[target] || SIGN_THRESHOLDS["DEFAULT"];
-                    let currentDist = Infinity;
+                    let minDiff = Infinity;
 
-                    // --- CAS J et Z (TRAJECTOIRE) ---
+                    // --- CALCUL DE LA DISTANCE (POUR TOUS LES CAS) ---
                     if (target === "J" || target === "Z") {
                         const targetStepRef = references[currentStep];
                         if (targetStepRef) {
                             const dNormal = calculateDistance(currentHand, targetStepRef);
                             const dMirror = calculateDistance(currentHand, mirrorHand(targetStepRef));
-                            currentDist = Math.min(dNormal, dMirror);
-
-                            // Affichage temps réel dans la barre de statut
-                            statusBar.innerText = `Step ${currentStep + 1}/${references.length} | Dist: ${currentDist.toFixed(2)}`;
-
-                            if (currentDist < threshold) {
-                                currentStep++;
-                                if (currentStep >= references.length) {
-                                    statusBar.innerText = "✨ PERFECT MOTION!";
-                                    currentStep = 0;
-                                    handleSuccess();
-                                }
-                            }
+                            minDiff = Math.min(dNormal, dMirror);
                         }
-                    } 
-                    // --- CAS STATIQUE (A, B, C...) ---
-                    else {
+                    } else {
                         const refList = Array.isArray(references[0]) ? references : [references];
-
                         refList.forEach(ref => {
                             if (ref && ref.length === 21) {
                                 const dNormal = calculateDistance(currentHand, ref);
                                 const dMirror = calculateDistance(currentHand, mirrorHand(ref));
-                                const bestForThisRef = Math.min(dNormal, dMirror);
-                                if (bestForThisRef < currentDist) currentDist = bestForThisRef;
+                                const best = Math.min(dNormal, dMirror);
+                                if (best < minDiff) minDiff = best;
                             }
                         });
+                    }
 
-                        // Affichage temps réel du score et de l'objectif
-                        const distInfo = ` | Dist: ${currentDist.toFixed(2)} (Target: <${threshold})`;
-                        
-                        if (currentDist < threshold) {
-                            statusBar.innerText = "✨ PERFECT!" + distInfo;
-                            handleSuccess();
-                        } else if (currentDist < (threshold + 1.2)) {
-                            statusBar.innerText = "⚡ Almost there..." + distInfo;
+                    // --- AFFICHAGE ET VALIDATION ---
+                    if (minDiff !== Infinity) {
+                        const distFormatted = minDiff.toFixed(2);
+                        const statusSuffix = ` | <b>Dist: ${distFormatted}</b> (Target: <${threshold})`;
+
+                        if (target === "J" || target === "Z") {
+                            // Cas dynamique
+                            if (minDiff < threshold) {
+                                currentStep++;
+                                if (currentStep >= references.length) {
+                                    statusBar.innerHTML = "✨ PERFECT MOTION!" + statusSuffix;
+                                    handleSuccess();
+                                } else {
+                                    statusBar.innerHTML = `Step ${currentStep}/${references.length}` + statusSuffix;
+                                }
+                            } else {
+                                statusBar.innerHTML = `Waiting for Step ${currentStep + 1}` + statusSuffix;
+                            }
                         } else {
-                            statusBar.innerText = "Perform sign: " + target + distInfo;
+                            // Cas statique
+                            if (minDiff < threshold) {
+                                statusBar.innerHTML = "✨ PERFECT!" + statusSuffix;
+                                handleSuccess();
+                            } else if (minDiff < (threshold + 1.2)) {
+                                statusBar.innerHTML = "⚡ Almost there..." + statusSuffix;
+                            } else {
+                                statusBar.innerHTML = "Perform sign: " + target + statusSuffix;
+                            }
                         }
+                    } else {
+                        statusBar.innerText = "Targeting: " + target + " (No ref found)";
                     }
                 }
             } catch (calcError) {
