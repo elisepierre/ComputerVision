@@ -288,24 +288,29 @@ function handleSuccess() {
 
 document.getElementById("enableWebcamButton").onclick = async () => {
     if (!handLandmarker) {
-        statusBar.innerText = "❌ IA non prête, attends 2 secondes...";
+        statusBar.innerText = "⏳ IA en cours de chargement... Patiente.";
         return;
     }
 
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480 } // On force une résolution standard
+        });
         video.srcObject = stream;
         
         video.onloadedmetadata = () => {
             video.play();
-            // On s'assure que la vidéo tourne avant de lancer la boucle de prédiction
-            requestAnimationFrame(predict); 
-            document.getElementById("enableWebcamButton").innerText = "Webcam Active";
-            document.getElementById("enableWebcamButton").disabled = true;
+            // Sécurité cruciale : on attend que la vidéo tourne vraiment
+            video.addEventListener('playing', () => {
+                console.log("🎥 Vidéo en lecture, lancement de predict...");
+                predict(); // On ne lance predict qu'ICI
+                document.getElementById("enableWebcamButton").innerText = "Webcam Active ✅";
+                document.getElementById("enableWebcamButton").disabled = true;
+            }, { once: true });
         };
     } catch (err) {
         console.error("Webcam Error:", err);
-        statusBar.innerText = "❌ Caméra bloquée.";
+        statusBar.innerText = "❌ Caméra bloquée ou non trouvée.";
     }
 };
 
