@@ -58,7 +58,8 @@ async function loadReferences() {
 
         console.log("📍 Attempting to fetch:", jsonToLoad);
 
-        const response = await fetch(jsonToLoad);
+        // Le "?v=" suivi de l'heure actuelle empêche le navigateur d'utiliser le cache
+        const response = await fetch(`${jsonToLoad}?v=${new Date().getTime()}`);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
