@@ -33,6 +33,7 @@ const SIGN_THRESHOLDS = {
     "B": 2.5,      // Plus souple
     "C": 3.5,      // Trajectoire
     "D": 2.5,      // Trajectoire
+    "G": 8,      // Trajectoire
     "DEFAULT": 2 // Seuil par défaut pour les autres
 };
 
@@ -206,10 +207,9 @@ function drawStyledHand(landmarks) {
 // --- 5. PRÉDICTION & WEBCAM ---
 async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
+        // --- LES 2 LIGNES MAGIQUES POUR LES TRAITS ---
         canvasElement.width = video.videoWidth;
         canvasElement.height = video.videoHeight;
-        canvasElement.style.width = video.clientWidth + "px";
-        canvasElement.style.height = video.clientHeight + "px";
 
         const results = await handLandmarker.detectForVideo(video, performance.now(), {
             width: video.videoWidth,
@@ -220,6 +220,8 @@ async function predict() {
 
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
+            
+            // DESSIN DU SQUELETTE
             drawStyledHand(currentHand);
 
             try {
@@ -230,7 +232,6 @@ async function predict() {
                     const threshold = SIGN_THRESHOLDS[target] || SIGN_THRESHOLDS["DEFAULT"];
                     let minDiff = Infinity;
 
-                    // --- CALCUL DE LA DISTANCE (POUR TOUS LES CAS) ---
                     if (target === "J" || target === "Z") {
                         const targetStepRef = references[currentStep];
                         if (targetStepRef) {
@@ -250,26 +251,21 @@ async function predict() {
                         });
                     }
 
-                    // --- AFFICHAGE ET VALIDATION ---
                     if (minDiff !== Infinity) {
                         const distFormatted = minDiff.toFixed(2);
-                        const statusSuffix = ` | <b>Dist: ${distFormatted}</b> (Target: <${threshold})`;
+                        const statusSuffix = ` | <b>Dist: ${distFormatted}</b> (Limit: ${threshold})`;
 
                         if (target === "J" || target === "Z") {
-                            // Cas dynamique
                             if (minDiff < threshold) {
                                 currentStep++;
+                                statusBar.innerHTML = `Step ${currentStep}/${references.length}` + statusSuffix;
                                 if (currentStep >= references.length) {
-                                    statusBar.innerHTML = "✨ PERFECT MOTION!" + statusSuffix;
                                     handleSuccess();
-                                } else {
-                                    statusBar.innerHTML = `Step ${currentStep}/${references.length}` + statusSuffix;
                                 }
                             } else {
-                                statusBar.innerHTML = `Waiting for Step ${currentStep + 1}` + statusSuffix;
+                                statusBar.innerHTML = `Waiting Step ${currentStep + 1}` + statusSuffix;
                             }
                         } else {
-                            // Cas statique
                             if (minDiff < threshold) {
                                 statusBar.innerHTML = "✨ PERFECT!" + statusSuffix;
                                 handleSuccess();
@@ -279,8 +275,6 @@ async function predict() {
                                 statusBar.innerHTML = "Perform sign: " + target + statusSuffix;
                             }
                         }
-                    } else {
-                        statusBar.innerText = "Targeting: " + target + " (No ref found)";
                     }
                 }
             } catch (calcError) {
