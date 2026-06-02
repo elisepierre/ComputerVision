@@ -251,10 +251,10 @@ async function predict() {
                             }
                         });
 
-                        if (minDiff < 4.2) {
+                        if (minDiff < 3.2) {
                             statusBar.innerText = "✨ PERFECT!";
                             handleSuccess();
-                        } else if (minDiff < 6.0) {
+                        } else if (minDiff < 4.5) {
                             statusBar.innerText = "⚡ Almost there...";
                         } else {
                             statusBar.innerText = "Perform the sign: " + target;
