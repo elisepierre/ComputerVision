@@ -287,23 +287,25 @@ function handleSuccess() {
 }
 
 document.getElementById("enableWebcamButton").onclick = async () => {
+    if (!handLandmarker) {
+        statusBar.innerText = "❌ IA non prête, attends 2 secondes...";
+        return;
+    }
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
         
-        // On attend que les métadonnées soient chargées
         video.onloadedmetadata = () => {
             video.play();
-            // Petit délai de sécurité pour laisser le flux s'initialiser
-            setTimeout(() => {
-                predict();
-                document.getElementById("enableWebcamButton").innerText = "Webcam Active ✅";
-                document.getElementById("enableWebcamButton").disabled = true;
-            }, 500); 
+            // On s'assure que la vidéo tourne avant de lancer la boucle de prédiction
+            requestAnimationFrame(predict); 
+            document.getElementById("enableWebcamButton").innerText = "Webcam Active";
+            document.getElementById("enableWebcamButton").disabled = true;
         };
     } catch (err) {
         console.error("Webcam Error:", err);
-        statusBar.innerText = "❌ Webcam blocked or not found.";
+        statusBar.innerText = "❌ Caméra bloquée.";
     }
 };
 
