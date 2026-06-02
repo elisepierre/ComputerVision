@@ -138,27 +138,31 @@ if (closeHelpBtn) {
     closeHelpBtn.onclick = () => { helpModal.style.display = "none"; };
 }
 
+function mirrorHand(hand) {
+    return hand.map(p => ({
+        x: -p.x, // Inversion de l'axe X pour gérer la main opposée
+        y: p.y,
+        z: p.z
+    }));
+}
+
 // --- 4. MATHS & DESSIN ---
 function calculateDistance(hand1, hand2) {
     let totalDist = 0;
-
-    // 1. Calculer la taille de chaque main pour normaliser (Distance Poignet-Majeur)
-    const size1 = Math.hypot(hand1[9].x - hand1[0].x, hand1[9].y - hand1[0].y);
-    const size2 = Math.hypot(hand2[9].x - hand2[0].x, hand2[9].y - hand2[0].y);
+    // Normalisation basée sur la distance Poignet (0) -> Majeur (9)
+    const size1 = Math.hypot(hand1[9].x - hand1[0].x, hand1[9].y - hand1[0].y) || 1;
+    const size2 = Math.hypot(hand2[9].x - hand2[0].x, hand2[9].y - hand2[0].y) || 1;
 
     for (let i = 0; i < 21; i++) {
-        // 2. Coordonnées relatives au poignet
         const dx1 = (hand1[i].x - hand1[0].x) / size1;
         const dy1 = (hand1[i].y - hand1[0].y) / size1;
-        
         const dx2 = (hand2[i].x - hand2[0].x) / size2;
         const dy2 = (hand2[i].y - hand2[0].y) / size2;
-
-        // 3. Somme des distances euclidiennes normalisées
         totalDist += Math.hypot(dx1 - dx2, dy1 - dy2);
     }
     return totalDist;
 }
+
 
 const HAND_CONNECTIONS = [
     [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
@@ -207,25 +211,31 @@ async function predict() {
             const currentHand = results.landmarks[0];
             drawStyledHand(currentHand);
 
-            // --- DANS LA FONCTION PREDICT ---
             const target = targetWordEl.innerText.toUpperCase();
-            const references = myReferenceDataset[target]; // C'est maintenant un tableau de références
-            
-            if (references && Array.isArray(references) && canValidate) {
-                // On calcule la distance pour chaque variante et on prend le minimum
+            const references = myReferenceDataset[target];
+
+            // On vérifie si on a des références (soit une seule, soit un tableau)
+            if (references && canValidate) {
                 let minDiff = Infinity;
                 
-                references.forEach(ref => {
-                    const d = calculateDistance(currentHand, ref);
-                    if (d < minDiff) minDiff = d;
+                // On transforme en tableau si ce n'est pas déjà le cas pour boucler proprement
+                const refList = Array.isArray(references) ? references : [references];
+
+                refList.forEach(ref => {
+                    // Test 1: Comparaison normale
+                    const distNormal = calculateDistance(currentHand, ref);
+                    // Test 2: Comparaison miroir (pour la main gauche/droite)
+                    const distMirror = calculateDistance(currentHand, mirrorHand(ref));
+
+                    minDiff = Math.min(minDiff, distNormal, distMirror);
                 });
-            
+
                 console.log(`Best distance for ${target}: ${minDiff.toFixed(2)}`);
-            
-                if (minDiff < 3.5) {
+
+                if (minDiff < 4.0) { // Seuil ajusté
                     statusBar.innerText = "PERFECT!";
                     handleSuccess();
-                } else if (minDiff < 5.5) {
+                } else if (minDiff < 6.0) {
                     statusBar.innerText = "You're almost there...";
                 } else {
                     statusBar.innerText = "Perform the sign: " + target;
