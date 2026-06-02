@@ -31,8 +31,8 @@ let aiModel = null;
 const SIGN_THRESHOLDS = {
     "A": 2,      // Plus strict
     "B": 2,      // Plus souple
-    "C": 2,      // Trajectoire
-    "D": 2,      // Trajectoire
+    "C": 3.5,      // Trajectoire
+    "D": 3,      // Trajectoire
     "DEFAULT": 3.2 // Seuil par défaut pour les autres
 };
 
