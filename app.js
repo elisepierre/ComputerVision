@@ -289,14 +289,20 @@ document.getElementById("enableWebcamButton").onclick = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
+        
+        // On attend que les métadonnées soient chargées
         video.onloadedmetadata = () => {
             video.play();
-            predict();
-            document.getElementById("enableWebcamButton").innerText = "Webcam Active";
-            document.getElementById("enableWebcamButton").disabled = true;
+            // Petit délai de sécurité pour laisser le flux s'initialiser
+            setTimeout(() => {
+                predict();
+                document.getElementById("enableWebcamButton").innerText = "Webcam Active ✅";
+                document.getElementById("enableWebcamButton").disabled = true;
+            }, 500); 
         };
     } catch (err) {
-        alert("Webcam Error:" + err.message);
+        console.error("Webcam Error:", err);
+        statusBar.innerText = "❌ Webcam blocked or not found.";
     }
 };
 
