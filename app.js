@@ -138,18 +138,19 @@ if (closeHelpBtn) {
     closeHelpBtn.onclick = () => { helpModal.style.display = "none"; };
 }
 
+// Function to flip the hand data for the opposite hand
 function mirrorHand(hand) {
+    if (!hand) return null;
     return hand.map(p => ({
-        x: -p.x, // Inversion de l'axe X pour gérer la main opposée
+        x: 1 - p.x, // Proper mirroring within the 0-1 coordinate space
         y: p.y,
         z: p.z
     }));
 }
 
-// --- 4. MATHS & DESSIN ---
 function calculateDistance(hand1, hand2) {
     let totalDist = 0;
-    // Normalisation basée sur la distance Poignet (0) -> Majeur (9)
+    // Normalization: use distance between wrist(0) and middle finger base(9) as scale
     const size1 = Math.hypot(hand1[9].x - hand1[0].x, hand1[9].y - hand1[0].y) || 1;
     const size2 = Math.hypot(hand2[9].x - hand2[0].x, hand2[9].y - hand2[0].y) || 1;
 
@@ -162,7 +163,6 @@ function calculateDistance(hand1, hand2) {
     }
     return totalDist;
 }
-
 
 const HAND_CONNECTIONS = [
     [0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
@@ -209,30 +209,32 @@ async function predict() {
 
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
+            
+            // This part keeps the purple lines moving in real-time
             drawStyledHand(currentHand);
 
             const target = targetWordEl.innerText.toUpperCase();
             const references = myReferenceDataset[target];
 
-            // On vérifie si on a des références (soit une seule, soit un tableau)
             if (references && canValidate) {
                 let minDiff = Infinity;
                 
-                // On transforme en tableau si ce n'est pas déjà le cas pour boucler proprement
-                const refList = Array.isArray(references) ? references : [references];
+                // Convert to array if it's just one reference
+                const refList = Array.isArray(references[0]) ? references : [references];
 
                 refList.forEach(ref => {
-                    // Test 1: Comparaison normale
+                    // Check both normal and mirrored versions
                     const distNormal = calculateDistance(currentHand, ref);
-                    // Test 2: Comparaison miroir (pour la main gauche/droite)
-                    const distMirror = calculateDistance(currentHand, mirrorHand(ref));
+                    const mirroredRef = mirrorHand(ref);
+                    const distMirror = calculateDistance(currentHand, mirroredRef);
 
-                    minDiff = Math.min(minDiff, distNormal, distMirror);
+                    const bestForThisRef = Math.min(distNormal, distMirror);
+                    if (bestForThisRef < minDiff) minDiff = bestForThisRef;
                 });
 
-                console.log(`Best distance for ${target}: ${minDiff.toFixed(2)}`);
+                console.log(`Best distance: ${minDiff.toFixed(2)}`);
 
-                if (minDiff < 4.0) { // Seuil ajusté
+                if (minDiff < 4.2) { // Increased threshold slightly for normalized math
                     statusBar.innerText = "PERFECT!";
                     handleSuccess();
                 } else if (minDiff < 6.0) {
