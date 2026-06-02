@@ -140,9 +140,9 @@ if (closeHelpBtn) {
 
 // Function to flip the hand data for the opposite hand
 function mirrorHand(hand) {
-    if (!hand) return null;
+    if (!hand || !Array.isArray(hand)) return null;
     return hand.map(p => ({
-        x: 1 - p.x, // Proper mirroring within the 0-1 coordinate space
+        x: 1 - p.x, // Inverse le X par rapport au centre de l'image (0.5)
         y: p.y,
         z: p.z
     }));
@@ -195,26 +195,28 @@ function drawStyledHand(landmarks) {
 // --- 5. PRÉDICTION & WEBCAM ---
 async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
-        // Ajustement automatique du canvas
+        // 1. Ajustement automatique de la taille du dessin
         if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
             canvasElement.width = video.videoWidth;
             canvasElement.height = video.videoHeight;
         }
 
+        // 2. Détection des points de la main par MediaPipe
         const results = await handLandmarker.detectForVideo(video, performance.now(), {
             width: video.videoWidth,
             height: video.videoHeight
         });
 
+        // 3. On efface le canvas précédent
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
             
-            // PRIORITÉ : On dessine d'abord pour éviter le freeze visuel
+            // DESSIN : On dessine les points violets en premier pour la fluidité
             drawStyledHand(currentHand);
 
-            // LOGIQUE DE RECONNAISSANCE
+            // LOGIQUE DE COMPARAISON
             try {
                 const target = targetWordEl.innerText.toUpperCase();
                 const references = myReferenceDataset[target];
@@ -222,41 +224,51 @@ async function predict() {
                 if (references && canValidate) {
                     let minDiff = Infinity;
                     
-                    // On gère les deux formats : soit un seul signe, soit une liste de variantes
-                    // Ton JSON actuel est au format : "X": [{point0}, {point1}...]
-                    // On vérifie si references[0] est lui-même un tableau (cas multi-références)
+                    // Transformation en liste (pour gérer ton JSON actuel ou le futur multi-signes)
                     const isMulti = Array.isArray(references) && references[0] && Array.isArray(references[0]);
                     const refList = isMulti ? references : [references];
 
                     refList.forEach(ref => {
                         if (ref && ref.length === 21) {
+                            // TEST MAIN 1 : Comparaison normale
                             const distNormal = calculateDistance(currentHand, ref);
+                            
+                            // TEST MAIN 2 : Comparaison avec le miroir (Main opposée)
                             const distMirror = calculateDistance(currentHand, mirrorHand(ref));
-                            minDiff = Math.min(minDiff, distNormal, distMirror);
+                            
+                            // On garde le meilleur score (le plus petit) des deux
+                            const bestMatchForThisRef = Math.min(distNormal, distMirror);
+                            
+                            if (bestMatchForThisRef < minDiff) {
+                                minDiff = bestMatchForThisRef;
+                            }
                         }
                     });
 
+                    // VALIDATION DES RÉSULTATS
                     if (minDiff !== Infinity) {
-                        console.log(`Distance: ${minDiff.toFixed(2)}`);
+                        // On affiche la distance dans la barre de statut pour t'aider à régler
+                        console.log(`Best Distance: ${minDiff.toFixed(2)}`);
+                        
                         if (minDiff < 4.2) {
-                            statusBar.innerText = "PERFECT!";
+                            statusBar.innerText = "✨ PERFECT! (Distance: " + minDiff.toFixed(1) + ")";
                             handleSuccess();
                         } else if (minDiff < 6.0) {
-                            statusBar.innerText = "You're almost there...";
+                            statusBar.innerText = "⚡ You're almost there... Keep trying!";
                         } else {
                             statusBar.innerText = "Perform the sign: " + target;
                         }
                     }
                 }
             } catch (calcError) {
-                // Si le calcul plante, on l'affiche mais on ne bloque pas la vidéo
                 console.error("Calculation error:", calcError);
             }
         }
     }
-    // Continue la boucle quoi qu'il arrive
+    // Relance la fonction pour l'image suivante (60 fois par seconde)
     window.requestAnimationFrame(predict);
 }
+    
 function handleSuccess() {
     canValidate = false;
     score++;
