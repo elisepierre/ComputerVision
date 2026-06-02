@@ -198,20 +198,28 @@ async function predict() {
             const currentHand = results.landmarks[0];
             drawStyledHand(currentHand);
 
+            // --- DANS LA FONCTION PREDICT ---
             const target = targetWordEl.innerText.toUpperCase();
-            const reference = myReferenceDataset[target];
-
-            if (reference && canValidate) {
-                const diff = calculateDistance(currentHand, reference);
-                console.log(`Distance for ${target}: ${diff.toFixed(2)}`);
-
-                if (diff < 3.5) {
+            const references = myReferenceDataset[target]; // C'est maintenant un tableau de références
+            
+            if (references && Array.isArray(references) && canValidate) {
+                // On calcule la distance pour chaque variante et on prend le minimum
+                let minDiff = Infinity;
+                
+                references.forEach(ref => {
+                    const d = calculateDistance(currentHand, ref);
+                    if (d < minDiff) minDiff = d;
+                });
+            
+                console.log(`Best distance for ${target}: ${minDiff.toFixed(2)}`);
+            
+                if (minDiff < 3.5) {
                     statusBar.innerText = "PERFECT!";
                     handleSuccess();
-                } else if (diff < 5.5) {
+                } else if (minDiff < 5.5) {
                     statusBar.innerText = "You're almost there...";
                 } else {
-                    statusBar.innerText = "Perform the sign:" + target;
+                    statusBar.innerText = "Perform the sign: " + target;
                 }
             }
         }
