@@ -85,24 +85,30 @@ main {
 
 .video-frame {
     position: relative;
-    background: #000;
-    border-radius: 20px;
-    overflow: hidden;
-    border: 6px solid var(--white);
+    width: 100%;
+    max-width: 640px; /* Évite que ça devienne géant sur ordi */
     aspect-ratio: 4/3;
+    overflow: hidden;
+    border-radius: 20px;
 }
 
 #webcam {
-    transform: rotateY(180deg); /* Effet miroir pour que ce soit naturel */
-    background-color: #000; /* Fond noir par défaut sur la vidéo */
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Enlève les bandes noires, mais peut zoomer un peu */
+    transform: rotateY(180deg);
 }
 
 #output_canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10; /* Force les traits violets devant la vidéo */
     transform: rotateY(180deg);
-    background-color: transparent !important; /* Force la transparence totale */
     pointer-events: none;
 }
-
 /* --- MODALES (CORRIGÉES) --- */
 .modal-overlay {
     display: none; /* Changé par JS en 'flex' */
