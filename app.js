@@ -27,6 +27,15 @@ let API_KEY = localStorage.getItem("GEMINI_API_KEY");
 let genAI = null;
 let aiModel = null;
 
+// Configuration des difficultés personnalisées par signe
+const SIGN_THRESHOLDS = {
+    "A": 2.8,      // Plus strict
+    "B": 4.2,      // Plus souple
+    "J": 4.5,      // Trajectoire
+    "Z": 4.5,      // Trajectoire
+    "DEFAULT": 3.2 // Seuil par défaut pour les autres
+};
+
 function setupAI() {
     API_KEY = localStorage.getItem("GEMINI_API_KEY");
     if (API_KEY) {
@@ -218,18 +227,23 @@ async function predict() {
                 const references = myReferenceDataset[target];
 
                 if (references && canValidate) {
+                    // Chercher le seuil spécifique ou utiliser le défaut
+                    const threshold = SIGN_THRESHOLDS[target] || SIGN_THRESHOLDS["DEFAULT"];
+                    let currentDist = Infinity;
+
                     // --- CAS J et Z (TRAJECTOIRE) ---
                     if (target === "J" || target === "Z") {
                         const targetStepRef = references[currentStep];
                         if (targetStepRef) {
                             const dNormal = calculateDistance(currentHand, targetStepRef);
                             const dMirror = calculateDistance(currentHand, mirrorHand(targetStepRef));
-                            const bestDist = Math.min(dNormal, dMirror);
+                            currentDist = Math.min(dNormal, dMirror);
 
-                            if (bestDist < 4.5) {
+                            // Affichage temps réel dans la barre de statut
+                            statusBar.innerText = `Step ${currentStep + 1}/${references.length} | Dist: ${currentDist.toFixed(2)}`;
+
+                            if (currentDist < threshold) {
                                 currentStep++;
-                                statusBar.innerText = `Step ${currentStep}/${references.length} done! ⚡`;
-                                
                                 if (currentStep >= references.length) {
                                     statusBar.innerText = "✨ PERFECT MOTION!";
                                     currentStep = 0;
@@ -240,24 +254,27 @@ async function predict() {
                     } 
                     // --- CAS STATIQUE (A, B, C...) ---
                     else {
-                        let minDiff = Infinity;
                         const refList = Array.isArray(references[0]) ? references : [references];
 
                         refList.forEach(ref => {
                             if (ref && ref.length === 21) {
                                 const dNormal = calculateDistance(currentHand, ref);
                                 const dMirror = calculateDistance(currentHand, mirrorHand(ref));
-                                minDiff = Math.min(minDiff, dNormal, dMirror);
+                                const bestForThisRef = Math.min(dNormal, dMirror);
+                                if (bestForThisRef < currentDist) currentDist = bestForThisRef;
                             }
                         });
 
-                        if (minDiff < 2) {
-                            statusBar.innerText = "✨ PERFECT!";
+                        // Affichage temps réel du score et de l'objectif
+                        const distInfo = ` | Dist: ${currentDist.toFixed(2)} (Target: <${threshold})`;
+                        
+                        if (currentDist < threshold) {
+                            statusBar.innerText = "✨ PERFECT!" + distInfo;
                             handleSuccess();
-                        } else if (minDiff < 3) {
-                            statusBar.innerText = "⚡ Almost there...";
+                        } else if (currentDist < (threshold + 1.2)) {
+                            statusBar.innerText = "⚡ Almost there..." + distInfo;
                         } else {
-                            statusBar.innerText = "Perform the sign: " + target;
+                            statusBar.innerText = "Perform sign: " + target + distInfo;
                         }
                     }
                 }
