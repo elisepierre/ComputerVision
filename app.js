@@ -306,6 +306,85 @@ document.getElementById("enableWebcamButton").onclick = async () => {
     }
 };
 
+// --- 7. EXTRACTEUR DE DONNÉES (POUR LE MODE BATCH) ---
+const batchProcessBtn = document.getElementById("batch-process");
+const imageUploadInput = document.getElementById("image-upload");
+
+// Quand on clique sur le bouton vert, on ouvre le sélecteur de fichiers
+batchProcessBtn.onclick = () => {
+    imageUploadInput.click();
+};
+
+// Quand les fichiers sont sélectionnés
+imageUploadInput.onchange = async (event) => {
+    const files = event.target.files;
+    if (files.length === 0) return;
+
+    statusBar.innerText = "⏳ Processing images... Please wait.";
+    
+    for (const file of files) {
+        // On récupère le nom du fichier pour savoir quelle lettre c'est
+        // Exemple: "A_1.jpg" -> "A"
+        const label = file.name.split('_')[0].toUpperCase();
+        
+        try {
+            const landmarks = await extractLandmarksFromImageFile(file);
+            if (landmarks) {
+                // LOGIQUE MULTI-SIGNES : On ajoute sans écraser
+                if (!myReferenceDataset[label]) {
+                    myReferenceDataset[label] = [];
+                }
+                
+                // Si c'était un vieil objet (ancien format), on le transforme en tableau
+                if (!Array.isArray(myReferenceDataset[label])) {
+                    myReferenceDataset[label] = [myReferenceDataset[label]];
+                }
+
+                myReferenceDataset[label].push(landmarks);
+                console.log(`✅ Added variant for ${label}.`);
+            }
+        } catch (err) {
+            console.error("Error processing " + file.name, err);
+        }
+    }
+
+    statusBar.innerText = "✅ Done! Downloading your new JSON...";
+    downloadNewJSON(myReferenceDataset);
+};
+
+// Fonction pour extraire les points d'une image uploadée
+async function extractLandmarksFromImageFile(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const img = new Image();
+            img.onload = async () => {
+                // Utilisation de handLandmarker sur l'image
+                const result = handLandmarker.detect(img);
+                if (result.landmarks && result.landmarks.length > 0) {
+                    resolve(result.landmarks[0]);
+                } else {
+                    console.warn("No hand found in: " + file.name);
+                    resolve(null);
+                }
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// Fonction pour télécharger le fichier JSON mis à jour
+function downloadNewJSON(data) {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "alphabet_signs.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
 // --- 6. LANCEMENT ---
 async function init() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
