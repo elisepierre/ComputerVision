@@ -33,7 +33,7 @@ const SIGN_THRESHOLDS = {
     "B": 2.5,      // Plus souple
     "C": 3.5,      // Trajectoire
     "D": 2.5,      // Trajectoire
-    "DEFAULT": 3.2 // Seuil par défaut pour les autres
+    "DEFAULT": 2 // Seuil par défaut pour les autres
 };
 
 function setupAI() {
