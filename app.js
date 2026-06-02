@@ -207,21 +207,22 @@ function drawStyledHand(landmarks) {
 // --- 5. PRÉDICTION & WEBCAM ---
 async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
-        // --- LES 2 LIGNES MAGIQUES POUR LES TRAITS ---
-        canvasElement.width = video.videoWidth;
-        canvasElement.height = video.videoHeight;
+        // 1. FORCER LE CANVAS À COLLER À LA VIDÉO
+        // On utilise video.videoWidth/Height qui sont les vraies dimensions du capteur
+        if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+        }
 
-        const results = await handLandmarker.detectForVideo(video, performance.now(), {
-            width: video.videoWidth,
-            height: video.videoHeight
-        });
+        const results = await handLandmarker.detectForVideo(video, performance.now());
 
+        // 2. EFFACER ET DESSINER
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
             
-            // DESSIN DU SQUELETTE
+            // On s'assure que drawStyledHand utilise bien ces dimensions
             drawStyledHand(currentHand);
 
             try {
