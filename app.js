@@ -121,35 +121,28 @@ document.getElementById("close-settings").onclick = () => {
 };
 
 helpBtn.onclick = async () => {
+    // FIX : On définit 'target' ici en récupérant la lettre actuelle
+    const target = targetWordEl.innerText.toUpperCase(); 
+
     if (!aiModel) {
         statusBar.innerText = "Configure your API Key first! (⚙️)";
         settingsModal.style.display = "flex";
         return;
     }
 
-    const currentLetter = targetWordEl.innerText;
     helpText.innerText = "Professor Gemini is thinking...";
     helpModal.style.display = "flex";
 
-    // On force Gemini à être un prof de langue des signes
-    const prompt = `I am learning ASL. I am trying to sign the letter '${target}'. 
-My hand coordinates are currently at a distance of ${minDiff} from the target. 
-In one very short sentence, give me a tip to reach the perfect position for this specific letter.`;
+    // Utilise le prompt optimisé pour donner un conseil précis
+    const prompt = `I am learning ASL. I am trying to sign the letter '${target}'. In one very short sentence, give me a specific tip to position my fingers correctly for this sign.`;
 
     try {
-        // Ajoute "generateContent" avec une gestion d'erreur plus précise
         const result = await aiModel.generateContent(prompt);
-        const text = result.response.text(); // Pas besoin de await sur .text() ici d'habitude
-        
-        if (text) {
-            helpText.innerText = text;
-        } else {
-            helpText.innerText = "Gemini could not generate a response.";
-        }
+        const text = result.response.text();
+        helpText.innerText = text || "Gemini could not generate a response.";
     } catch (error) {
-        console.error("Gemini Error Detail:", error);
-        // Regarde si l'erreur parle de "Safety" ou de "429"
-        helpText.innerText = "Error: " + (error.message.includes("429") ? "Too many requests, wait 1 min." : "Check your key or connection.");
+        console.error("Gemini Error:", error);
+        helpText.innerText = "Error: Check your API key or connection.";
     }
 };
 const closeHelpBtn = document.querySelector(".close-help");
