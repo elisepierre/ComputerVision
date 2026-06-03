@@ -37,8 +37,8 @@ const SIGN_THRESHOLDS = {
     "F": 3.5,      // Trajectoire
     "G": 9,      // Trajectoire
     "H": 3.5,      // Trajectoire
-    "J": 13,      // Trajectoire
-    "Z": 13,      // Trajectoire
+    "J": 20,      // Trajectoire
+    "Z": 20,      // Trajectoire
     "DEFAULT": 5 // Seuil par défaut pour les autres
 };
 
