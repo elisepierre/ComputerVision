@@ -37,9 +37,9 @@ const SIGN_THRESHOLDS = {
     "F": 2.5,      // Trajectoire
     "G": 8,      // Trajectoire
     "H": 2.5,      // Trajectoire
-    "J": 9,      // Trajectoire
-    "Z": 9,      // Trajectoire
-    "DEFAULT": 2 // Seuil par défaut pour les autres
+    "J": 13,      // Trajectoire
+    "Z": 13,      // Trajectoire
+    "DEFAULT": 4 // Seuil par défaut pour les autres
 };
 
 function setupAI() {
