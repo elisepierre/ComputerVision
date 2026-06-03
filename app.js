@@ -132,7 +132,9 @@ helpBtn.onclick = async () => {
     helpModal.style.display = "flex";
 
     // On force Gemini à être un prof de langue des signes
-    const prompt = `You are a sign language expert. In one short sentence, explain how to position the fingers for the letter '${currentLetter}' in ASL.`;
+    const prompt = `I am learning ASL. I am trying to sign the letter '${target}'. 
+My hand coordinates are currently at a distance of ${minDiff} from the target. 
+In one very short sentence, give me a tip to reach the perfect position for this specific letter.`;
 
     try {
         // Ajoute "generateContent" avec une gestion d'erreur plus précise
