@@ -1,7 +1,6 @@
 import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-// --- ÉLÉMENTS UI ---
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
@@ -20,26 +19,24 @@ let handLandmarker;
 let score = 0;
 let canValidate = true;
 let myReferenceDataset = {};
-let currentStep = 0; // Pour suivre l'étape actuelle du mouvement (J et Z)
+let currentStep = 0;
 
-// --- 1. CONFIGURATION GEMINI ---
 let API_KEY = localStorage.getItem("GEMINI_API_KEY");
 let genAI = null;
 let aiModel = null;
 
-// Configuration des difficultés personnalisées par signe
 const SIGN_THRESHOLDS = {
-    "A": 3,      // Plus strict
-    "B": 3.5,      // Plus souple
-    "C": 4.5,      // Trajectoire
-    "D": 3.5,      // Trajectoire
-    "E": 4,      // Trajectoire
-    "F": 3.5,      // Trajectoire
-    "G": 9,      // Trajectoire
-    "H": 3.5,      // Trajectoire
-    "J": 20,      // Trajectoire
-    "Z": 20,      // Trajectoire
-    "DEFAULT": 5 // Seuil par défaut pour les autres
+    "A": 3,
+    "B": 3.5,
+    "C": 4.5,
+    "D": 3.5,
+    "E": 4,
+    "F": 3.5,
+    "G": 9,
+    "H": 3.5,
+    "J": 20,
+    "Z": 20,
+    "DEFAULT": 10
 };
 
 function setupAI() {
@@ -47,7 +44,6 @@ function setupAI() {
     if (API_KEY) {
         try {
             genAI = new GoogleGenerativeAI(API_KEY);
-            // Utilise "gemini-2.5-flash" (la plus rapide et performante pour ton projet)
             aiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             console.log("Gemini 2.5 Flash is ready!");
         } catch (e) {
@@ -55,16 +51,13 @@ function setupAI() {
         }
     }
 }
-// On appelle setupAI après l'avoir définie
 setupAI();
 
-// --- 2. CHARGEMENT DU DATASET ---
 async function loadReferences() {
     try {
         const url = window.location.href;
-        let jsonToLoad = "alphabet_signs.json"; // Default file
+        let jsonToLoad = "alphabet_signs.json";
 
-        // Logic to select the correct JSON based on the URL
         if (url.includes("meetings.html")) {
             jsonToLoad = "meetings_signs.json";
         } else if (url.includes("ordering.html")) {
@@ -73,7 +66,6 @@ async function loadReferences() {
 
         console.log("📍 Attempting to fetch:", jsonToLoad);
 
-        // Le "?v=" suivi de l'heure actuelle empêche le navigateur d'utiliser le cache
         const response = await fetch(`${jsonToLoad}?v=${new Date().getTime()}`);
         
         if (!response.ok) {
@@ -82,8 +74,7 @@ async function loadReferences() {
 
         const data = await response.json();
         myReferenceDataset = data;
-        
-        // Extracting keys (signs) from the object
+
         const signs = Object.keys(myReferenceDataset);
         console.log("🔍 Signs found in dataset:", signs);
 
@@ -100,7 +91,7 @@ async function loadReferences() {
         statusBar.innerText = "❌ Error loading signs. Check console.";
     }
 }
-// --- 3. ÉVÉNEMENTS (MODALES & BOUTONS) ---
+
 settingsBtn.onclick = () => {
     settingsModal.style.display = "flex";
     if (API_KEY) apiKeyInput.value = API_KEY;
@@ -121,7 +112,6 @@ document.getElementById("close-settings").onclick = () => {
 };
 
 helpBtn.onclick = async () => {
-    // FIX : On définit 'target' ici en récupérant la lettre actuelle
     const target = targetWordEl.innerText.toUpperCase(); 
 
     if (!aiModel) {
@@ -133,7 +123,6 @@ helpBtn.onclick = async () => {
     helpText.innerText = "Professor Gemini is thinking...";
     helpModal.style.display = "flex";
 
-    // Utilise le prompt optimisé pour donner un conseil précis
     const prompt = `I am learning ASL. I am trying to sign the letter '${target}'. In one very short sentence, give me a specific tip to position my fingers correctly for this sign.`;
 
     try {
@@ -150,11 +139,10 @@ if (closeHelpBtn) {
     closeHelpBtn.onclick = () => { helpModal.style.display = "none"; };
 }
 
-// Function to flip the hand data for the opposite hand
 function mirrorHand(hand) {
     if (!hand || !Array.isArray(hand)) return null;
     return hand.map(p => ({
-        x: 1 - p.x, // Inverse le X par rapport au centre de l'image (0.5)
+        x: 1 - p.x,
         y: p.y,
         z: p.z
     }));
@@ -162,7 +150,6 @@ function mirrorHand(hand) {
 
 function calculateDistance(hand1, hand2) {
     let totalDist = 0;
-    // Normalization: use distance between wrist(0) and middle finger base(9) as scale
     const size1 = Math.hypot(hand1[9].x - hand1[0].x, hand1[9].y - hand1[0].y) || 1;
     const size2 = Math.hypot(hand2[9].x - hand2[0].x, hand2[9].y - hand2[0].y) || 1;
 
@@ -183,11 +170,9 @@ const HAND_CONNECTIONS = [
 ];
 
 function drawStyledHand(landmarks) {
-    // On récupère la taille RÉELLE que la vidéo prend à l'écran
     const displayWidth = video.clientWidth;
     const displayHeight = video.clientHeight;
 
-    // On force le canvas à avoir EXACTEMENT cette taille de pixels
     if (canvasElement.width !== displayWidth || canvasElement.height !== displayHeight) {
         canvasElement.width = displayWidth;
         canvasElement.height = displayHeight;
@@ -200,17 +185,14 @@ function drawStyledHand(landmarks) {
     canvasCtx.lineWidth = 4;
     canvasCtx.lineCap = "round";
 
-    // Dessin des connections
     HAND_CONNECTIONS.forEach(([start, end]) => {
         canvasCtx.beginPath();
-        // Le secret est ici : MediaPipe donne des ratios (0 à 1), 
-        // on les multiplie par la largeur/hauteur affichée
+
         canvasCtx.moveTo(landmarks[start].x * w, landmarks[start].y * h);
         canvasCtx.lineTo(landmarks[end].x * w, landmarks[end].y * h);
         canvasCtx.stroke();
     });
 
-    // Dessin des points
     landmarks.forEach(p => {
         canvasCtx.beginPath();
         canvasCtx.arc(p.x * w, p.y * h, 5, 0, 2 * Math.PI);
@@ -219,11 +201,9 @@ function drawStyledHand(landmarks) {
     });
 }
 
-// --- 5. PRÉDICTION & WEBCAM ---
 async function predict() {
     if (video.readyState >= 2 && handLandmarker) {
-        // 1. FORCER LE CANVAS À COLLER À LA VIDÉO
-        // On utilise video.videoWidth/Height qui sont les vraies dimensions du capteur
+
         if (canvasElement.width !== video.videoWidth || canvasElement.height !== video.videoHeight) {
             canvasElement.width = video.videoWidth;
             canvasElement.height = video.videoHeight;
@@ -231,13 +211,11 @@ async function predict() {
 
         const results = await handLandmarker.detectForVideo(video, performance.now());
 
-        // 2. EFFACER ET DESSINER
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
         if (results.landmarks && results.landmarks.length > 0) {
             const currentHand = results.landmarks[0];
-            
-            // On s'assure que drawStyledHand utilise bien ces dimensions
+
             drawStyledHand(currentHand);
 
             try {
@@ -303,7 +281,7 @@ async function predict() {
     
 function handleSuccess() {
     canValidate = false;
-    currentStep = 0; // Reset obligatoire pour J et Z
+    currentStep = 0;
     score++;
     scoreEl.innerText = score;
     const feedback = document.getElementById("feedback-pop");
@@ -321,7 +299,7 @@ function handleSuccess() {
 document.getElementById("enableWebcamButton").onclick = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: "user" } // On laisse le navigateur choisir la meilleure résolution
+            video: { facingMode: "user" }
         });
         video.srcObject = stream;
         
@@ -338,17 +316,13 @@ document.getElementById("enableWebcamButton").onclick = async () => {
     }
 };
 
-// --- 7. EXTRACTEUR DE DONNÉES (POUR LE MODE BATCH) ---
 const batchProcessBtn = document.getElementById("batch-process");
 const imageUploadInput = document.getElementById("image-upload");
 
-// Quand on clique sur le bouton vert, on ouvre le sélecteur de fichiers
 batchProcessBtn.onclick = () => {
     imageUploadInput.click();
 };
 
-// Quand les fichiers sont sélectionnés
-// Quand les fichiers sont sélectionnés dans l'extracteur
 imageUploadInput.onchange = async (event) => {
     const files = event.target.files;
     if (files.length === 0) return;
@@ -361,17 +335,14 @@ imageUploadInput.onchange = async (event) => {
         try {
             const landmarks = await extractLandmarksFromImageFile(file);
             if (landmarks) {
-                // Si la lettre n'existe pas, on initialise un tableau vide
                 if (!myReferenceDataset[label]) {
                     myReferenceDataset[label] = [];
                 }
-                
-                // Si c'était un ancien format objet, on le convertit proprement en tableau
+
                 if (!Array.isArray(myReferenceDataset[label])) {
                     myReferenceDataset[label] = [myReferenceDataset[label]];
                 }
 
-                // On pousse la nouvelle photo (tableau de 21 points) dans la liste de cette lettre
                 myReferenceDataset[label].push(landmarks);
                 console.log(`✅ Added variant for ${label}.`);
             }
@@ -381,10 +352,9 @@ imageUploadInput.onchange = async (event) => {
     }
 
     statusBar.innerText = "✅ Done! Downloading your new JSON...";
-    downloadNewJSON(myReferenceDataset); // Appelle la fonction de téléchargement propre
+    downloadNewJSON(myReferenceDataset);
 };
 
-// Fonction pour extraire les points d'une image uploadée
 async function extractLandmarksFromImageFile(file) {
     return new Promise(async (resolve) => {
         const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
@@ -416,11 +386,7 @@ async function extractLandmarksFromImageFile(file) {
     });
 }
 
-// Fonction pour télécharger le fichier JSON mis à jour
-// Fonction pour télécharger le fichier JSON avec un formatage clair (Pretty Print)
-// Fonction pour télécharger le fichier JSON parfaitement formaté (Pretty Print)
 function downloadNewJSON(data) {
-    // Le paramètre 'null, 2' force JavaScript à mettre chaque élément à la ligne avec une indentation propre
     const jsonString = JSON.stringify(data, null, 2);
     
     const blob = new Blob([jsonString], { type: "application/json" });
@@ -433,13 +399,11 @@ function downloadNewJSON(data) {
     
     downloadAnchorNode.click();
     
-    // Nettoyage de la mémoire du navigateur
     downloadAnchorNode.remove();
     URL.revokeObjectURL(url);
     
     console.log("📁 JSON formatted and downloaded successfully.");
 }
-// --- 6. LANCEMENT ---
 async function init() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
