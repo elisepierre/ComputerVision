@@ -54,7 +54,7 @@
             color: var(--text-dark);
             box-shadow: 0 10px 20px rgba(0,0,0,0.05);
             transition: all 0.3s ease;
-            border: 4px solid var(--white); /* Pour la cohérence avec le cadre caméra */
+            border: 4px solid var(--white);
             display: block;
         }
 
@@ -64,12 +64,11 @@
             box-shadow: 0 15px 30px rgba(138, 43, 226, 0.2);
         }
 
-        /* Cadre photo avec le même ratio 4:3 que ta caméra */
         .image-container {
             width: 100%;
             aspect-ratio: 4/3; 
             overflow: hidden;
-            background: #000; /* Fond noir comme la vidéo en chargement */
+            background: #000;
             position: relative;
         }
 
@@ -82,7 +81,7 @@
 
         .card-content { 
             padding: 20px; 
-            background: var(--bg-beige); /* Fond beige pour la partie texte interne */
+            background: var(--bg-beige);
         }
         
         .card-content h2 { margin: 0 0 10px 0; font-size: 1.4rem; color: var(--main-blue); }
